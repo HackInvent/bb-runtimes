@@ -30,7 +30,7 @@ endif
 
 ifeq ($(TARGET), arm-eabi)
     TARGETS=zynq7000 rpi2 sam4s samg55 smartfusion2 openmv2 stm32f4 \
-       stm32f429disco stm32f469disco stm32f746disco stm32f769disco tms570 lm3s
+       stm32f429disco stm32f469disco stm32f746disco stm32f769disco stm32h7xx tms570 lm3s
 endif
 
 ifeq ($(TARGET), leon-elf)

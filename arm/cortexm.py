@@ -280,18 +280,6 @@ class Stm32CommonBSP(BSP):
     def __init__(self):
         super(Stm32CommonBSP, self).__init__()
 
-        self.add_linker_script('arm/stm32/common-RAM.ld', loader='RAM')
-        self.add_linker_script('arm/stm32/common-ROM.ld', loader='ROM')
-
-        self.add_sources('crt0', [
-            'src/s-bbpara__stm32f4.ads',
-            'src/s-stm32.ads',
-            'arm/stm32/start-rom.S',
-            'arm/stm32/start-ram.S',
-            'arm/stm32/start-common.S',
-            'arm/stm32/setup_pll.adb',
-            'arm/stm32/setup_pll.ads'])
-
 
 class Stm32(CortexMTarget):
     """Generic handling of stm32 boards"""
@@ -309,7 +297,7 @@ class Stm32(CortexMTarget):
 
     @property
     def has_double_precision_fpu(self):
-        if self.mcu == 'stm32f7x9':
+        if self.mcu == 'stm32f7x9' or self.mcu == 'stm32h7xx':
             return True
         else:
             return False
@@ -318,7 +306,7 @@ class Stm32(CortexMTarget):
     def cortex(self):
         if self.mcu.startswith('stm32f4'):
             return 'cortex-m4'
-        elif self.mcu.startswith('stm32f7'):
+        elif self.mcu.startswith('stm32f7') or self.mcu.startswith('stm32h7'):
             return 'cortex-m7'
         else:
             assert False, "Unexpected MCU %s" % self.mcu
@@ -354,10 +342,25 @@ class Stm32(CortexMTarget):
             self.mcu = 'stm32f7x'
         elif self.board == 'stm32f769disco':
             self.mcu = 'stm32f7x9'
+        elif self.board == 'stm32h743nucleo':
+            self.mcu = 'stm32h7xx'
         else:
             assert False, "Unknown stm32 board: %s" % self.board
 
         super(Stm32, self).__init__()
+
+        self.add_linker_script('arm/stm32/common-RAM.ld', loader='RAM')
+        self.add_linker_script('arm/stm32/common-ROM.ld', loader='ROM')
+
+        if self.board != 'stm32h743nucleo':
+            self.add_sources('crt0', [
+                'src/s-bbpara__stm32f4.ads',
+                'src/s-stm32.ads',
+                'arm/stm32/start-rom.S',
+                'arm/stm32/start-ram.S',
+                'arm/stm32/start-common.S',
+                'arm/stm32/setup_pll.adb',
+                'arm/stm32/setup_pll.ads'])
 
         self.add_linker_script('arm/stm32/%s/memory-map.ld' % self.mcu,
                                loader=('RAM', 'ROM'))
@@ -394,6 +397,14 @@ class Stm32(CortexMTarget):
         elif self.board == 'stm32f769disco':
             self.add_sources('crt0', [
                 'src/s-stm32__f7x.adb'])
+        elif self.board == 'stm32h743nucleo':# has specific start script + no setup_pll
+            self.add_sources('crt0', [
+                'arm/stm32/%s/s-bbpara.ads' % self.mcu,
+                'arm/stm32/%s/s-stm32.ads' % self.mcu,
+                'arm/stm32/%s/s-stm32.adb' % self.mcu,
+                'arm/stm32/%s/start-common.S' % self.mcu,
+                'arm/stm32/%s/start-ram.S' % self.mcu,
+                'arm/stm32/%s/start-rom.S' % self.mcu])
 
         # ravenscar support
         self.add_sources('gnarl', [
