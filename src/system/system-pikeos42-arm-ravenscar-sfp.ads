@@ -5,9 +5,9 @@
 --                               S Y S T E M                                --
 --                                                                          --
 --                                 S p e c                                  --
---                            (RiscV64 Version)                             --
+--                          (PikeOS 4.2 ARM Version)                        --
 --                                                                          --
---          Copyright (C) 2017-2018, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2019, Free Software Foundation, Inc.         --
 --                                                                          --
 -- This specification is derived from the Ada Reference Manual for use with --
 -- GNAT. The copyright notice above, and the license provisions that follow --
@@ -34,6 +34,8 @@
 --                                                                          --
 ------------------------------------------------------------------------------
 
+--  This is a Ravenscar sfp version of this package for ARM PikeOS 4.2 targets
+
 pragma Restrictions (No_Exception_Propagation);
 --  Only local exception handling is supported in this profile
 
@@ -49,13 +51,8 @@ pragma Restrictions (No_Implicit_Dynamic_Code);
 pragma Restrictions (No_Finalization);
 --  Controlled types are not supported in this run time
 
-pragma Restrictions (No_Tasking);
---  Tasking is not supported in this run time
-
-pragma Discard_Names;
---  Disable explicitly the generation of names associated with entities in
---  order to reduce the amount of storage used. These names are not used anyway
---  (attributes such as 'Image and 'Value are not supported in this run time).
+pragma Profile (Ravenscar);
+--  This is a Ravenscar run time
 
 package System is
    pragma Pure;
@@ -83,7 +80,7 @@ package System is
    Max_Mantissa          : constant := 63;
    Fine_Delta            : constant := 2.0 ** (-Max_Mantissa);
 
-   Tick                  : constant := 0.0;
+   Tick                  : constant := 0.000_000_001; --  1 ns
 
    --  Storage-related Declarations
 
@@ -92,8 +89,8 @@ package System is
    Null_Address : constant Address;
 
    Storage_Unit : constant := 8;
-   Word_Size    : constant := Standard'Word_Size;
-   Memory_Size  : constant := 2 ** Word_Size;
+   Word_Size    : constant := 32;
+   Memory_Size  : constant := 2 ** 32;
 
    --  Address comparison
 
@@ -112,20 +109,34 @@ package System is
    --  Other System-Dependent Declarations
 
    type Bit_Order is (High_Order_First, Low_Order_First);
-   Default_Bit_Order : constant Bit_Order :=
-     Bit_Order'Val (Standard'Default_Bit_Order);
+   Default_Bit_Order : constant Bit_Order := Low_Order_First;
    pragma Warnings (Off, Default_Bit_Order); -- kill constant condition warning
 
    --  Priority-related Declarations (RM D.1)
 
-   Max_Priority           : constant Positive := 30;
-   Max_Interrupt_Priority : constant Positive := 31;
+   --  For simplicity there is a 1-1 correspondence between Ada and PikeOS
+   --  priorities. PikeOS priority 0 is reserved by the idle thread, so not
+   --  available to Ada.
 
-   subtype Any_Priority       is Integer      range  0 .. 31;
-   subtype Priority           is Any_Priority range  0 .. 30;
-   subtype Interrupt_Priority is Any_Priority range 31 .. 31;
+   --  PikeOS priorities are 0 .. 255
 
-   Default_Priority : constant Priority := 15;
+   --  Priorities greather than 245 are reserved to the system software (PSSW)
+
+   --  This implementation reserves priorities 224-239 to interrupts
+
+   --  Priorities 240-245 are reserved to HM and PikeOS exception handlers
+
+   Max_Priority           : constant Positive := 223;
+   Max_Interrupt_Priority : constant Positive := 239;
+
+   subtype Any_Priority       is Integer range 1 .. Max_Interrupt_Priority;
+   subtype Priority           is Any_Priority
+     range Any_Priority'First .. Max_Priority;
+   subtype Interrupt_Priority is Any_Priority
+     range Priority'Last + 1 .. Any_Priority'Last;
+
+   Default_Priority : constant Priority :=
+                        (Priority'First + Priority'Last) / 2;
 
 private
 
@@ -148,16 +159,16 @@ private
    Command_Line_Args         : constant Boolean := False;
    Configurable_Run_Time     : constant Boolean := True;
    Denorm                    : constant Boolean := True;
-   Duration_32_Bits          : constant Boolean := True;
-   Exit_Status_Supported     : constant Boolean := False;
+   Duration_32_Bits          : constant Boolean := False;
+   Exit_Status_Supported     : constant Boolean := True;
    Fractional_Fixed_Ops      : constant Boolean := False;
    Frontend_Layout           : constant Boolean := False;
    Machine_Overflows         : constant Boolean := False;
    Machine_Rounds            : constant Boolean := True;
-   Preallocated_Stacks       : constant Boolean := False;
+   Preallocated_Stacks       : constant Boolean := True;
    Signed_Zeros              : constant Boolean := True;
    Stack_Check_Default       : constant Boolean := False;
-   Stack_Check_Probes        : constant Boolean := False;
+   Stack_Check_Probes        : constant Boolean := True;
    Stack_Check_Limits        : constant Boolean := False;
    Support_Aggregates        : constant Boolean := True;
    Support_Composite_Assign  : constant Boolean := True;
@@ -168,5 +179,21 @@ private
    Use_Ada_Main_Program_Name : constant Boolean := False;
    Frontend_Exceptions       : constant Boolean := False;
    ZCX_By_Default            : constant Boolean := True;
+
+   --  The linker switches ordering comes from a project
+   --  generated with Codeo or pikeos-cloneproject.
+
+   pragma Linker_Options
+      ("-u_p4_entry" & ASCII.NUL &
+       "-u__cxx_local_dtors" & ASCII.NUL &
+       "-nostdlib" & ASCII.NUL &
+       "-T../ld/arm-app.ld" & ASCII.NUL &
+       "-T../ld/memory.ld" & ASCII.NUL &
+       "-lp4ext" & ASCII.NUL &
+       "-lgnat" & ASCII.NUL &
+       "-lvm" & ASCII.NUL &
+       "-lstand" & ASCII.NUL &
+       "-lp4" & ASCII.NUL &
+       "-lgcc");
 
 end System;

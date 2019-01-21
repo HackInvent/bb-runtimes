@@ -25,12 +25,9 @@ class PikeOS(Target):
         super(PikeOS, self).__init__()
         self.add_linker_script('pikeos/memory.ld')
         self.add_sources('arch', [
-            'pikeos/pikeos-cert-app.c',
             'src/s-textio__pikeos.adb',
             'src/s-macres__native.adb'])
-        self.add_sources('gnarl', [
-            'pikeos/adaint-pikeos.c',
-            'src/a-intnam__dummy.ads'])
+        self.add_sources('gnarl', ['src/a-intnam__dummy.ads'])
 
     def dump_runtime_xml(self, rts_name, rts):
         cnt = readfile('pikeos/runtime.xml')
@@ -82,4 +79,41 @@ class ArmPikeOS(PikeOS):
 
     def __init__(self):
         super(ArmPikeOS, self).__init__()
+        self.add_sources('arch', ['pikeos/pikeos-cert-app.c'])
+        self.add_sources('gnarl', ['pikeos/adaint-pikeos.c'])
+        self.add_linker_script('pikeos/arm-app.ld')
+
+
+class ArmPikeOS42(PikeOS):
+    @property
+    def name(self):
+        return 'arm-pikeos4.2'
+
+    @property
+    def target(self):
+        return 'arm-sysgo-pikeos4.2'
+
+    @property
+    def pikeos_version(self):
+        return 'pikeos4.2'
+
+    @property
+    def pikeos_target(self):
+        return 'arm/v7hf'
+
+    @property
+    def system_ads(self):
+        return {
+            'zfp': 'system-pikeos42-arm.ads',
+            'ravenscar-sfp': 'system-pikeos42-arm-ravenscar-sfp.ads',
+            'ravenscar-full': 'system-pikeos42-arm-ravenscar-full.ads'
+        }
+
+    def dump_runtime_xml(self, rts_name, rts):
+        return readfile('pikeos/runtime42.xml')
+
+    def __init__(self):
+        super(ArmPikeOS42, self).__init__()
+        self.add_sources('arch', ['pikeos/pikeos4.2-cert-app.c'])
+        self.add_sources('gnarl', ['pikeos/adaint-pikeos42.c'])
         self.add_linker_script('pikeos/arm-app.ld')

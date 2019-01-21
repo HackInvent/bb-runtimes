@@ -5,9 +5,9 @@
 --                               S Y S T E M                                --
 --                                                                          --
 --                                 S p e c                                  --
---                            (RiscV64 Version)                             --
+--                          (PikeOS 4.2 ARM Version)                        --
 --                                                                          --
---          Copyright (C) 2017-2018, Free Software Foundation, Inc.         --
+--          Copyright (C) 2016-2019, Free Software Foundation, Inc.         --
 --                                                                          --
 -- This specification is derived from the Ada Reference Manual for use with --
 -- GNAT. The copyright notice above, and the license provisions that follow --
@@ -33,6 +33,8 @@
 -- Extensive contributions were provided by Ada Core Technologies Inc.      --
 --                                                                          --
 ------------------------------------------------------------------------------
+
+--  This is a ZFP version of this package for ARM PikeOS 4.2 targets
 
 pragma Restrictions (No_Exception_Propagation);
 --  Only local exception handling is supported in this profile
@@ -60,7 +62,7 @@ pragma Discard_Names;
 package System is
    pragma Pure;
    --  Note that we take advantage of the implementation permission to make
-   --  this unit Pure instead of Preelaborable; see RM 13.7.1(15). In Ada
+   --  this unit Pure instead of Preelaborable (see RM 13.7.1(15)). In Ada
    --  2005, this is Pure in any case (AI-362).
 
    pragma No_Elaboration_Code_All;
@@ -92,8 +94,8 @@ package System is
    Null_Address : constant Address;
 
    Storage_Unit : constant := 8;
-   Word_Size    : constant := Standard'Word_Size;
-   Memory_Size  : constant := 2 ** Word_Size;
+   Word_Size    : constant := 32;
+   Memory_Size  : constant := 2 ** 32;
 
    --  Address comparison
 
@@ -112,20 +114,34 @@ package System is
    --  Other System-Dependent Declarations
 
    type Bit_Order is (High_Order_First, Low_Order_First);
-   Default_Bit_Order : constant Bit_Order :=
-     Bit_Order'Val (Standard'Default_Bit_Order);
+   Default_Bit_Order : constant Bit_Order := Low_Order_First;
    pragma Warnings (Off, Default_Bit_Order); -- kill constant condition warning
 
    --  Priority-related Declarations (RM D.1)
 
-   Max_Priority           : constant Positive := 30;
-   Max_Interrupt_Priority : constant Positive := 31;
+   --  For simplicity there is a 1-1 correspondence between Ada and PikeOS
+   --  priorities. PikeOS priority 0 is reserved by the idle thread, so not
+   --  available to Ada.
 
-   subtype Any_Priority       is Integer      range  0 .. 31;
-   subtype Priority           is Any_Priority range  0 .. 30;
-   subtype Interrupt_Priority is Any_Priority range 31 .. 31;
+   --  PikeOS priorities are 0 .. 255
 
-   Default_Priority : constant Priority := 15;
+   --  Priorities greather than 245 are reserved to the system software (PSSW)
+
+   --  This implementation reserves priorities 224-239 to interrupts
+
+   --  Priorities 240-245 are reserved to HM and PikeOS exception handlers
+
+   Max_Priority           : constant Positive := 223;
+   Max_Interrupt_Priority : constant Positive := 239;
+
+   subtype Any_Priority       is Integer range   1 .. Max_Interrupt_Priority;
+   subtype Priority           is Any_Priority
+     range Any_Priority'First .. Max_Priority;
+   subtype Interrupt_Priority is Any_Priority
+     range Priority'Last + 1 .. Any_Priority'Last;
+
+   Default_Priority : constant Priority :=
+                        (Priority'First + Priority'Last) / 2;
 
 private
 
@@ -149,7 +165,7 @@ private
    Configurable_Run_Time     : constant Boolean := True;
    Denorm                    : constant Boolean := True;
    Duration_32_Bits          : constant Boolean := True;
-   Exit_Status_Supported     : constant Boolean := False;
+   Exit_Status_Supported     : constant Boolean := True;
    Fractional_Fixed_Ops      : constant Boolean := False;
    Frontend_Layout           : constant Boolean := False;
    Machine_Overflows         : constant Boolean := False;
@@ -168,5 +184,21 @@ private
    Use_Ada_Main_Program_Name : constant Boolean := False;
    Frontend_Exceptions       : constant Boolean := False;
    ZCX_By_Default            : constant Boolean := True;
+
+   --  The linker switches ordering comes from a project
+   --  generated with Codeo or pikeos-cloneproject.
+
+   pragma Linker_Options
+      ("-u_p4_entry" & ASCII.NUL &
+       "-u__cxx_local_dtors" & ASCII.NUL &
+       "-nostdlib" & ASCII.NUL &
+       "-T../ld/arm-app.ld" & ASCII.NUL &
+       "-T../ld/memory.ld" & ASCII.NUL &
+       "-lp4ext" & ASCII.NUL &
+       "-lgnat" & ASCII.NUL &
+       "-lvm" & ASCII.NUL &
+       "-lstand" & ASCII.NUL &
+       "-lp4" & ASCII.NUL &
+       "-lgcc");
 
 end System;

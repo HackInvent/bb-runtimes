@@ -14,7 +14,7 @@ from support.rts_sources.sources import all_scenarios, sources
 from support.docgen import docgen
 
 # PikeOS
-from pikeos import ArmPikeOS
+from pikeos import ArmPikeOS, ArmPikeOS42
 
 # Cortex-M runtimes
 from arm.cortexm import Stm32, Sam, SmartFusion2, LM3S, M1AGL, Microbit, \
@@ -854,6 +854,8 @@ class X86Windows(X86Native):
 def build_configs(target):
     if target == 'arm-pikeos':
         t = ArmPikeOS()
+    elif target == 'arm-pikeos4.2':
+        t = ArmPikeOS42()
     elif target == 'zynq7000':
         t = Zynq7000()
     elif target == 'rpi2':
@@ -890,9 +892,9 @@ def build_configs(target):
         t = TMS570('tms570ls31', uart_io=True)
     elif target == 'tms570lc':
         # alias for the TMS570LC43x HDK board
-        t = TMS570('tms570lc43')
-    elif target == 'tms570lc_sci':
         t = TMS570('tms570lc43', uart_io=True)
+    elif target == 'tms570lc_dcc':
+        t = TMS570('tms570lc43', uart_io=False)
     elif target == 'lm3s':
         t = LM3S()
     elif target == 'm1agl':

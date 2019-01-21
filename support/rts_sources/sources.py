@@ -43,7 +43,7 @@ all_scenarios = {
     # How does the runtime integrate C support
     'Add_C_Integration': ['no', 'ada_clib', 'newlib'],
     # PikeOS-specific
-    'Pikeos_Version': ['pikeos3', 'pikeos4'],
+    'Pikeos_Version': ['pikeos3', 'pikeos4', 'pikeos4.2'],
     # Whether to add the math library in the runtime
     'Add_Math_Lib': [
         'no', 'softfloat', 'hardfloat',
@@ -922,6 +922,13 @@ sources = {
             'hie/s-osinte__pikeos4.ads', 'hie/s-osinte__pikeos4.adb']
     },
 
+    'gnarl/pikeos4.2': {
+        'conditions': ['Pikeos_Version:pikeos4.2'],
+        'pikeos_srcs': [
+            'hie/s-interr__pikeos4.adb',
+            'hie/s-osinte__pikeos4.ads', 'hie/s-osinte__pikeos42.adb']
+    },
+
     # SFP-specific files
     'gnarl/sfp': {
         'conditions': ['RTS_Profile:ravenscar-sfp'],
@@ -951,9 +958,9 @@ sources = {
             'libgnarl/g-boubuf.adb', 'libgnarl/g-boubuf.ads',
             'libgnarl/g-boumai.ads',
             'libgnarl/g-semaph.adb', 'libgnarl/g-semaph.ads',
-            'hie/s-tpoben.ads', 'hie/s-tpoben.adb',
             'hie/s-tasque.ads', 'hie/s-tasque.adb',
-            'hie/s-tpobop.ads', 'hie/s-tpobop.adb']
+            'hie/s-tpoben__bb.ads', 'hie/s-tpoben__bb.adb',
+            'hie/s-tpobop__bb.ads', 'hie/s-tpobop__bb.adb']
     },
 
     # Timing support
