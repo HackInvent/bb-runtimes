@@ -63,7 +63,7 @@ build_rts()
          fi
          runcmd ./build-rts.py --output=$objdir --gcc-dir=$GCC_SRC_DIR \
 	 	    --gnat-dir=$GNAT_SRC_DIR $src_opts ${flag_verbose:+-v} \
-	 	    $opts $config  || \
+	 	    --create-common $opts $config  || \
 	 return 1
       fi
 
@@ -314,6 +314,16 @@ build_zfp_rpi3()
     do_zfp aarch64-elf zfp/rpi3
 }
 
+build_sfp_rpi3()
+{
+    do_ravenscar aarch64-elf ravenscar-sfp/rpi3
+}
+
+build_zfp_aarch64_qemu()
+{
+    do_zfp aarch64-elf zfp/aarch64-qemu
+}
+
 build_zfp_stm32f4()
 {
     do_zfp arm-eabi zfp/stm32f4
@@ -388,6 +398,21 @@ build_sfp_stm32f769()
 build_full_stm32f769()
 {
     do_ravenscar arm-eabi ravenscar-full/stm32f769disco
+}
+
+build_zfp_stm32h7xx()
+{
+    do_zfp arm-eabi zfp/stm32h7xx
+}
+
+build_sfp_stm32h7xx()
+{
+    do_ravenscar arm-eabi ravenscar-sfp/stm32h7xx
+}
+
+build_full_stm32h7xx()
+{
+    do_ravenscar arm-eabi ravenscar-full/stm32h7xx
 }
 
 build_zfp_lm3s()
@@ -767,6 +792,14 @@ else
                   *) echo "Unknown command $opt for target $target"; exit 2;;
               esac
               ;;
+          stm32h7xx)
+              case $opt in
+                  zfp)  build_zfp_stm32h7xx ;;
+                  sfp)  build_sfp_stm32h7xx ;;
+                  full) build_full_stm32h7xx ;;
+                  *) echo "Unknown command $opt for target $target"; exit 2;;
+              esac
+              ;;
           stm32f769)
               case $opt in
                   zfp)  build_zfp_stm32f769 ;;
@@ -834,7 +867,12 @@ else
                   *) echo "Unknown command $opt for target $target"; exit 2;;
               esac
               ;;
-
+	  aarch64-qemu)
+               case $opt in
+                   zfp)  build_zfp_aarch64_qemu ;;
+                  *) echo "Unknown command $opt for target $target"; exit 2;;
+              esac
+              ;;
 	  # Sparc based
           erc32)
               case $opt in

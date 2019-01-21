@@ -42,6 +42,7 @@
 _DEFAULT_STACK_SIZE = (20 * 1024);
 _DEFAULT_STACK_EL3_SIZE = (4 * 1024);
 _DEFAULT_STACK_EL2_SIZE = (4 * 1024);
+_IRQ_STACK_SIZE = (8 * 1024);
 
 ENTRY(__start_ram);
 
@@ -101,6 +102,7 @@ SECTIONS
   
   .text :
   {
+    __text = .;
     *(.text .text.* .gnu.linkonce.t*)
   } > REGION_CODE
 
@@ -109,13 +111,17 @@ SECTIONS
     *(.rodata .rodata.* .gnu.linkonce.r*)
   } > REGION_CODE
 
-  .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } > REGION_CODE
-  PROVIDE_HIDDEN (__exidx_start = .);
-  .ARM.exidx   : { *(.ARM.exidx* .gnu.linkonce.armexidx.*) } > REGION_CODE
-  PROVIDE_HIDDEN (__exidx_end = .);
+  .eh_frame_hdr :
+  {
+     __eh_frame_hdr = .;
+    *(.eh_frame_hdr)
+  } > REGION_CODE
+  .eh_frame         : { KEEP (*(.eh_frame)) } > REGION_DATA
+  .gcc_except_table : { *(.gcc_except_table .gcc_except_table.*) } > REGION_DATA
 
   .data :
   {
+    __data = .;
     __data_start = .;
     *(.data .data.* .gnu.linkonce.d*)
     . = ALIGN(0x10);
@@ -144,17 +150,83 @@ SECTIONS
    . = ALIGN(0x10);
    __cpu0_stack_end = .;
 
+   __cpu1_stack_start = .;
+   . += DEFINED (__stack_size) ? __stack_size : _DEFAULT_STACK_SIZE;
+   . = ALIGN(0x10);
+   __cpu1_stack_end = .;
+
+   __cpu2_stack_start = .;
+   . += DEFINED (__stack_size) ? __stack_size : _DEFAULT_STACK_SIZE;
+   . = ALIGN(0x10);
+   __cpu2_stack_end = .;
+
+   __cpu3_stack_start = .;
+   . += DEFINED (__stack_size) ? __stack_size : _DEFAULT_STACK_SIZE;
+   . = ALIGN(0x10);
+   __cpu3_stack_end = .;
+
    __cpu0_stack_el3_start = .;
    . += DEFINED (__stack_el3_size) ? __stack_el3_size : _DEFAULT_STACK_EL3_SIZE;
    . = ALIGN(0x10);
    __cpu0_stack_el3_end = .;
+
+   __cpu1_stack_el3_start = .;
+   . += DEFINED (__stack_el3_size) ? __stack_el3_size : _DEFAULT_STACK_EL3_SIZE;
+   . = ALIGN(0x10);
+   __cpu1_stack_el3_end = .;
+
+   __cpu2_stack_el3_start = .;
+   . += DEFINED (__stack_el3_size) ? __stack_el3_size : _DEFAULT_STACK_EL3_SIZE;
+   . = ALIGN(0x10);
+   __cpu2_stack_el3_end = .;
+
+   __cpu3_stack_el3_start = .;
+   . += DEFINED (__stack_el3_size) ? __stack_el3_size : _DEFAULT_STACK_EL3_SIZE;
+   . = ALIGN(0x10);
+   __cpu3_stack_el3_end = .;
 
    __cpu0_stack_el2_start = .;
    . += DEFINED (__stack_el2_size) ? __stack_el2_size : _DEFAULT_STACK_EL2_SIZE;
    . = ALIGN(0x10);
    __cpu0_stack_el2_end = .;
 
+   __cpu1_stack_el2_start = .;
+   . += DEFINED (__stack_el2_size) ? __stack_el2_size : _DEFAULT_STACK_EL2_SIZE;
+   . = ALIGN(0x10);
+   __cpu1_stack_el2_end = .;
+
+   __cpu2_stack_el2_start = .;
+   . += DEFINED (__stack_el2_size) ? __stack_el2_size : _DEFAULT_STACK_EL2_SIZE;
+   . = ALIGN(0x10);
+   __cpu2_stack_el2_end = .;
+
+   __cpu3_stack_el2_start = .;
+   . += DEFINED (__stack_el2_size) ? __stack_el2_size : _DEFAULT_STACK_EL2_SIZE;
+   . = ALIGN(0x10);
+   __cpu3_stack_el2_end = .;
+
    __stack_end = .;
+
+   /* Interrupt stacks.  */
+   __interrupt_stack_start = .;
+
+   __cpu0_interrupt_stack_start = .;
+   . = ALIGN(. + _IRQ_STACK_SIZE, 0x10);
+   __cpu0_interrupt_stack_end = .;
+
+   __cpu1_interrupt_stack_start = .;
+   . = ALIGN(. + _IRQ_STACK_SIZE, 0x10);
+   __cpu1_interrupt_stack_end = .;
+
+   __cpu2_interrupt_stack_start = .;
+   . = ALIGN(. + _IRQ_STACK_SIZE, 0x10);
+   __cpu2_interrupt_stack_end = .;
+
+   __cpu3_interrupt_stack_start = .;
+   . = ALIGN(. + _IRQ_STACK_SIZE, 0x10);
+   __cpu3_interrupt_stack_end = .;
+
+   __interrupt_stack_end = .;
 
    _end = .;
    __heap_start = .;

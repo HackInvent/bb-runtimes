@@ -1,12 +1,12 @@
 --
---  Copyright (C) 2016, AdaCore
+--  Copyright (C) 2017, AdaCore
 --
 
 --  This spec has been automatically generated from ATSAM4SD32C.svd
 
 pragma Ada_2012;
+pragma Style_Checks (Off);
 
-with Interfaces.Bit_Types;
 with System;
 
 package Interfaces.SAM.EFC is
@@ -17,30 +17,30 @@ package Interfaces.SAM.EFC is
    -- Registers --
    ---------------
 
-   subtype EFC0_FMR_FWS_Field is Interfaces.Bit_Types.UInt4;
+   subtype EFC0_FMR_FWS_Field is Interfaces.SAM.UInt4;
 
    --  EEFC Flash Mode Register
    type EFC0_FMR_Register is record
       --  Ready Interrupt Enable
       FRDY           : Boolean := False;
       --  unspecified
-      Reserved_1_7   : Interfaces.Bit_Types.UInt7 := 16#0#;
+      Reserved_1_7   : Interfaces.SAM.UInt7 := 16#0#;
       --  Flash Wait State
       FWS            : EFC0_FMR_FWS_Field := 16#0#;
       --  unspecified
-      Reserved_12_15 : Interfaces.Bit_Types.UInt4 := 16#0#;
+      Reserved_12_15 : Interfaces.SAM.UInt4 := 16#0#;
       --  Sequential Code Optimization Disable
       SCOD           : Boolean := False;
       --  unspecified
-      Reserved_17_23 : Interfaces.Bit_Types.UInt7 := 16#0#;
+      Reserved_17_23 : Interfaces.SAM.UInt7 := 16#0#;
       --  Flash Access Mode
       FAM            : Boolean := False;
       --  unspecified
-      Reserved_25_25 : Interfaces.Bit_Types.Bit := 16#0#;
+      Reserved_25_25 : Interfaces.SAM.Bit := 16#0#;
       --  Code Loops Optimization Enable
       CLOE           : Boolean := True;
       --  unspecified
-      Reserved_27_31 : Interfaces.Bit_Types.UInt5 := 16#0#;
+      Reserved_27_31 : Interfaces.SAM.UInt5 := 16#0#;
    end record
      with Volatile_Full_Access, Size => 32,
           Bit_Order => System.Low_Order_First;
@@ -127,28 +127,28 @@ package Interfaces.SAM.EFC is
       Stus => 20,
       Spus => 21);
 
-   subtype EFC0_FCR_FARG_Field is Interfaces.Bit_Types.Short;
+   subtype EFC0_FCR_FARG_Field is Interfaces.SAM.UInt16;
 
    --  Flash Writing Protection Key
    type FCR_FKEY_Field is
      (
+      --  Reset value for the field
+      Fcr_Fkey_Field_Reset,
       --  The 0x5A value enables the command defined by the bits of the
       --  register. If the field is written with a different value, the write
       --  is not performed and no action is started.
-      Passwd,
-      --  Reset value for the field
-      Fcr_Fkey_Field_Reset)
+      Passwd)
      with Size => 8;
    for FCR_FKEY_Field use
-     (Passwd => 90,
-      Fcr_Fkey_Field_Reset => 211);
+     (Fcr_Fkey_Field_Reset => 0,
+      Passwd => 90);
 
    --  EEFC Flash Command Register
    type EFC0_FCR_Register is record
       --  Write-only. Flash Command
-      FCMD : FCR_FCMD_Field := Interfaces.SAM.EFC.Spui;
+      FCMD : FCR_FCMD_Field := Interfaces.SAM.EFC.Getd;
       --  Write-only. Flash Command Argument
-      FARG : EFC0_FCR_FARG_Field := 16#6000#;
+      FARG : EFC0_FCR_FARG_Field := 16#0#;
       --  Write-only. Flash Writing Protection Key
       FKEY : FCR_FKEY_Field := Fcr_Fkey_Field_Reset;
    end record
@@ -172,7 +172,7 @@ package Interfaces.SAM.EFC is
       --  Read-only. Flash Error Status
       FLERR         : Boolean;
       --  unspecified
-      Reserved_4_31 : Interfaces.Bit_Types.UInt28;
+      Reserved_4_31 : Interfaces.SAM.UInt28;
    end record
      with Volatile_Full_Access, Size => 32,
           Bit_Order => System.Low_Order_First;
@@ -192,13 +192,13 @@ package Interfaces.SAM.EFC is
    --  Embedded Flash Controller 0
    type EFC_Peripheral is record
       --  EEFC Flash Mode Register
-      FMR : EFC0_FMR_Register;
+      FMR : aliased EFC0_FMR_Register;
       --  EEFC Flash Command Register
-      FCR : EFC0_FCR_Register;
+      FCR : aliased EFC0_FCR_Register;
       --  EEFC Flash Status Register
-      FSR : EFC0_FSR_Register;
+      FSR : aliased EFC0_FSR_Register;
       --  EEFC Flash Result Register
-      FRR : Interfaces.Bit_Types.Word;
+      FRR : aliased Interfaces.SAM.UInt32;
    end record
      with Volatile;
 
@@ -211,10 +211,10 @@ package Interfaces.SAM.EFC is
 
    --  Embedded Flash Controller 0
    EFC0_Periph : aliased EFC_Peripheral
-     with Import, Address => EFC0_Base;
+     with Import, Address => System'To_Address (16#400E0A00#);
 
    --  Embedded Flash Controller 1
    EFC1_Periph : aliased EFC_Peripheral
-     with Import, Address => EFC1_Base;
+     with Import, Address => System'To_Address (16#400E0C00#);
 
 end Interfaces.SAM.EFC;

@@ -29,6 +29,7 @@
 
 with Interfaces.ARM_V7AR;
 with System.Machine_Code; use System.Machine_Code;
+with Trap_Handler;
 with Interfaces; use Interfaces;
 with Ada.Text_IO; use Ada.Text_IO;
 with Commands; use Commands;
@@ -67,6 +68,16 @@ package body Armv7a is
 
    pragma Unreferenced (Get_SPSR);
 
+   function Get_SCR return Unsigned_32
+   is
+      Res : Unsigned_32;
+   begin
+      Asm ("mrc p15,#0,%0,c1,c1,#0",
+           Outputs => Unsigned_32'Asm_Output ("=r", Res),
+           Volatile => True);
+      return Res;
+   end Get_SCR;
+
    function Get_CPUECTLR return Unsigned_32
    is
       Lo, Hi : Unsigned_32;
@@ -78,13 +89,53 @@ package body Armv7a is
       return Lo;
    end Get_CPUECTLR;
 
+   function Get_MIDR return Unsigned_32
+   is
+      Res : Unsigned_32;
+   begin
+      Asm ("mrc p15, #0, %0, c0, c0, #0",
+           Outputs => Unsigned_32'Asm_Output ("=r", Res),
+           Volatile => True);
+      return Res;
+   end Get_MIDR;
+
    procedure Proc_Cr is
+      CPSR : constant Unsigned_32 := Get_CPSR;
+      MIDR : constant Unsigned_32 := Get_MIDR;
    begin
       Put ("VBAR: " & Image8 (Get_VBAR));
-      Put (", CPSR: " & Image8 (Get_CPSR));
+      Put (", CPSR: " & Image8 (CPSR));
+      Put (' ');
+      case CPSR and 16#1f# is
+         when 2#10000# => Put ("usr");
+         when 2#10001# => Put ("fiq");
+         when 2#10010# => Put ("irq");
+         when 2#10011# => Put ("svc");
+         when 2#10110# => Put ("mon");
+         when 2#10111# => Put ("abt");
+         when 2#11010# => Put ("hyp");
+         when 2#11011# => Put ("und");
+         when 2#11111# => Put ("sys");
+         when others => Put ("???");
+      end case;
       New_Line;
-      Put ("CPUECTLR: ");
-      Put_Line (Image8 (Get_CPUECTLR));
+
+      Put ("MIDR: " & Image8 (Get_MIDR));
+      New_Line;
+
+      --  Only for A53
+      if (MIDR and 16#ff_0_f_fff_0#) = 16#41_0_f_d03_0# then
+         Put ("CPUECTLR: ");
+         Put (Image8 (Get_CPUECTLR));
+         New_Line;
+      end if;
+
+      if (CPSR and 16#1f#) = 2#10110# then
+         --  Only for monitor.
+         Put (", SCR: ");
+         Put (Image8 (Get_SCR));
+      end if;
+      New_Line;
    end Proc_Cr;
 
    procedure Proc_Cpsid is
@@ -96,6 +147,16 @@ package body Armv7a is
    begin
       Asm ("cpsie if", Volatile => True);
    end Proc_Cpsie;
+
+   procedure Proc_Svc is
+   begin
+      Asm ("svc #0", Volatile => True);
+   end Proc_Svc;
+
+   procedure Proc_Smc is
+   begin
+      Asm ("mov r10, #0x27; mov r11, #0x15; smc #0", Volatile => True);
+   end Proc_Smc;
 
    procedure Disp_Cache_Size (L : Natural)
    is
@@ -176,7 +237,7 @@ package body Armv7a is
    end Proc_Cache;
 
    Commands : aliased Command_List :=
-     (4,
+     (6,
       (1 => (new String'("cache - disp cache"),
              Proc_Cache'Access),
        2 => (new String'("cr - Display some config registers"),
@@ -184,8 +245,16 @@ package body Armv7a is
        3 => (new String'("cpsid - Disable interrupts"),
              Proc_Cpsid'Access),
        4 => (new String'("cpsie - Enable interrupts"),
-             Proc_Cpsie'Access)),
+             Proc_Cpsie'Access),
+       5 => (new String'("svc - Supervisor call"),
+             Proc_Svc'Access),
+       6 => (new String'("smc - Monitor call"),
+             Proc_Smc'Access)),
       null);
 begin
    Register_Commands (Commands'Access);
+   if False then
+      Trap_Handler.Install_Monitor_Handlers;
+      Put_Line ("Handlers installed");
+   end if;
 end Armv7a;
