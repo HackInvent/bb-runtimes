@@ -40,6 +40,7 @@ class RTSOptions(object):
         'Add_Math_Lib': [
             'no', 'softfloat', 'hardfloat',
             'hardfloat_dp', 'hardfloat_sp'],
+        'Add_Complex_Type_Support': ['no', 'yes'],
         'Add_Arith64': ['no', 'yes'],
         # 'Image:
         'Add_Image_Enum': ['no', 'yes'],
@@ -100,7 +101,7 @@ class RTSOptions(object):
                 ret['Add_Math_Lib'] = 'hardfloat'
         else:
             ret['Add_Math_Lib'] = 'no'
-
+        ret['Add_Complex_Type_Support'] = 'no'
         ret['Add_C_Support'] = "no"
         ret['Add_Arith64'] = "no"
         ret['Add_Exponent_Int'] = "no"
@@ -176,6 +177,7 @@ class RTSOptions(object):
         # override the RTS value
         ret['RTS_Profile'] = 'ravenscar-full'
         ret['Add_Arith64'] = "yes"
+        ret['Add_Complex_Type_Support'] = 'yes'
         ret['Add_Exponent_Int'] = "yes"
         ret['Add_Exponent_LL_Int'] = "yes"
         ret['Add_Exponent_Modular'] = "yes"
@@ -548,21 +550,10 @@ class SourceDirs(SharedFilesHolder):
         # Math support
         self.add_rule('math', 'Add_Math_Lib:!no')
         self.add_sources('math', [
-            'libgnat/a-ncelfu.ads',
-            'libgnat/a-ngcefu.ads', 'libgnat/a-ngcefu.adb',
-            'libgnat/a-ngcoty.ads',
-            'hie/a-ngcoty__ada.adb',
             'hie/a-ngelfu__ada.ads', 'hie/a-ngelfu__ada.adb',
-            'libgnat/a-nlcefu.ads',
-            'libgnat/a-nlcoty.ads',
             'hie/a-nlelfu__ada.ads',
-            'libgnat/a-nllcef.ads',
-            'libgnat/a-nllcty.ads',
             'libgnat/a-nllefu.ads',
-            'libgnat/a-nscefu.ads',
-            'libgnat/a-nscoty.ads',
             'libgnat/a-nselfu.ads',
-            'libgnat/a-nucoty.ads',
             'hie/a-nuelfu__ada.ads',
             'hie/a-numaux__ada.ads',
             'libgnat/a-numeri.ads',
@@ -574,6 +565,22 @@ class SourceDirs(SharedFilesHolder):
             'hie/s-libsin__ada.ads', 'hie/s-libsin__ada.adb',
             'hie/s-lidosq__ada.ads',
             'hie/s-lisisq__ada.ads'])
+
+        self.add_rule('math-complex',
+                      ['Add_Complex_Type_Support:yes',
+                       'Add_Math_Lib:!no'])
+        self.add_sources('math-complex', [
+            'libgnat/a-ncelfu.ads',
+            'libgnat/a-ngcefu.ads', 'libgnat/a-ngcefu.adb',
+            'libgnat/a-ngcoty.ads',
+            'hie/a-ngcoty__ada.adb',
+            'libgnat/a-nlcefu.ads',
+            'libgnat/a-nlcoty.ads',
+            'libgnat/a-nllcef.ads',
+            'libgnat/a-nllcty.ads',
+            'libgnat/a-nscefu.ads',
+            'libgnat/a-nscoty.ads',
+            'libgnat/a-nucoty.ads'])
 
         self.add_rule('math/full',
                       ['RTS_Profile:ravenscar-full',
@@ -630,8 +637,7 @@ class SourceDirs(SharedFilesHolder):
         # ZFP only libgnat files
         self.add_rule('zfp-parame', 'RTS_Profile:zfp')
         self.add_sources('zfp-parame', [
-            'hie/s-parame__zfp.ads',
-            'hie/s-parame__zfp.adb'])
+            'hie/s-parame__zfp.ads'])
 
     def init_sfp(self):
         """ravenscar-sfp files"""
