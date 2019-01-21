@@ -7,3 +7,5 @@
 gnatinspect.db
 b__*.ad[bs]
 .#*
+sparc/leon3/runtime.xml
+sparc/leon3/runtime.xml
