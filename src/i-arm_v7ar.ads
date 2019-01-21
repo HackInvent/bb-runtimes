@@ -6,7 +6,7 @@
 --                                                                          --
 --                                   S p e c                                --
 --                                                                          --
---                         Copyright (C) 2016, AdaCore                      --
+--                      Copyright (C) 2016-2017, AdaCore                    --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -33,12 +33,9 @@
 --  access to control registers...)
 
 with System;
-with System.Storage_Elements;
 
 package Interfaces.ARM_V7AR is
-   --  pragma No_Elaboration_Code_All;
-   --  Not yet ready as Storage_Elements doesn't have the pragma
-
+   pragma No_Elaboration_Code_All;
    pragma Preelaborate;
 
    --  Access to CP15 registers
@@ -50,13 +47,23 @@ package Interfaces.ARM_V7AR is
 
       procedure DCCIMVAC (Mva : System.Address)
         with Inline_Always;
-      --  Data cache clean and invalidate by va
+      --  Data cache clean and invalidate to PoC by va
+
+      procedure DCIMVAC (Mva : System.Address)
+        with Inline_Always;
+      --  Data cache invalidate to PoC by va
 
       function Get_SCTLR return Unsigned_32
         with Inline_Always;
       procedure Set_SCTLR (V : Unsigned_32)
         with Inline_Always;
       --  Get/Set SCTLR
+
+      function Get_ACTLR return Unsigned_32
+        with Inline_Always;
+      procedure Set_ACTLR (V : Unsigned_32)
+        with Inline_Always;
+      --  Get/Set ACTLR
 
       SCTLR_C : constant := 16#0004#;
       SCTLR_I : constant := 16#1000#;
@@ -68,6 +75,41 @@ package Interfaces.ARM_V7AR is
       procedure Set_CSSELR (V : Unsigned_32)
         with Inline_Always;
       --  Set CSSELR
+
+      --  c6 functions
+
+      function Get_MPUIR return Unsigned_32
+        with Inline_Always;
+
+      function Get_MPU_Region_Base_Address return Unsigned_32
+        with Inline_Always;
+
+      procedure Set_MPU_Region_Base_Address (V : Unsigned_32)
+        with Inline_Always;
+
+      function Get_MPU_Region_Size_And_Enable return Unsigned_32
+        with Inline_Always;
+
+      procedure Set_MPU_Region_Size_And_Enable
+        (V : Unsigned_32)
+        with Inline_Always;
+
+      function Get_MPU_Region_Access_Control return Unsigned_32
+        with Inline_Always;
+
+      procedure Set_MPU_Region_Access_Control (V : Unsigned_32)
+        with Inline_Always;
+
+      procedure Set_MPU_Region_Number (V : Unsigned_32)
+        with Inline_Always;
+
+      function Get_PMCR return Unsigned_32
+        with Inline_Always;
+      --  Get the Performance Monitor Control Register
+
+      procedure Set_PMCR (V : Unsigned_32)
+        with Inline_Always;
+      --  Set the Performance Monitor Control Register
    end CP15;
 
    --  Memory barriers
@@ -77,6 +119,9 @@ package Interfaces.ARM_V7AR is
         with Inline_Always;
       --  Data synchronization barrier
 
+      procedure DMB
+        with Inline_Always;
+
       procedure ISB
         with Inline_Always;
       --  Instruction synchronization barrier
@@ -85,9 +130,9 @@ package Interfaces.ARM_V7AR is
    --  Cache maintenance
 
    package Cache is
-      procedure Dcache_Flush_By_Range
-        (Start : System.Address;
-         Len   : System.Storage_Elements.Storage_Count);
-      --  Clean and invalidate all location between START and START + LEN - 1
+      procedure Invalidate_DCache
+        with Inline_Always;
+      procedure Invalidate_ICache
+        with Inline_Always;
    end Cache;
 end Interfaces.ARM_V7AR;

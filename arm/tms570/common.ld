@@ -8,7 +8,7 @@
  *                                                                          *
  *      Copyright (C) 1999-2002 Universidad Politecnica de Madrid           *
  *             Copyright (C) 2003-2006 The European Space Agency            *
- *                   Copyright (C) 2003-2013 AdaCore                        *
+ *                   Copyright (C) 2003-2017 AdaCore                        *
  *                                                                          *
  * GNAT is free software;  you can  redistribute it  and/or modify it under *
  * terms of the  GNU General Public License as published  by the Free Soft- *
@@ -41,6 +41,17 @@
 
 SEARCH_DIR(.)
 __DYNAMIC  =  0;
+
+/* Stack sizes */
+_DEFAULT_STACK_SIZE = (20 * 1024);
+
+_SVC_STACK_SIZE   =  256;
+_UNDEF_STACK_SIZE =  256;
+_ABORT_STACK_SIZE =  256;
+_IRQ_STACK_SIZE   = 1024;
+_FIQ_STACK_SIZE   =  256;
+
+ENTRY(__gnat_init);
 
 /*
  * The memory map looks like this:
@@ -80,18 +91,20 @@ SECTIONS
   {
     KEEP (*(.traps))
     *(.text .text.* .gnu.linkonce.t*)
-  }  > REGION_CODE
+  } > REGION_CODE =0xff
 
-  .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } > REGION_CODE
+  .ARM.extab : { *(.ARM.extab* .gnu.linkonce.armextab.*) } > REGION_CODE =0xff
   PROVIDE_HIDDEN (__exidx_start = .);
-  .ARM.exidx   : { *(.ARM.exidx* .gnu.linkonce.armexidx.*) } > REGION_CODE
+  .ARM.exidx : { *(.ARM.exidx* .gnu.linkonce.armexidx.*) } > REGION_CODE =0xff
   PROVIDE_HIDDEN (__exidx_end = .);
 
   .rodata :
   {
     *(.rodata .rodata.* .gnu.linkonce.r*)
-  }  > REGION_CODE
+    . = ALIGN(0x8);
+  } > REGION_CODE =0xff
 
+  /* relocated at runtime in case REGION_DATA /= REGION_CODE */
   .data : AT (ALIGN (ADDR (.rodata) + SIZEOF(.rodata), ALIGNOF (.data)))
   {
     __data_load = LOADADDR(.data);
@@ -99,7 +112,7 @@ SECTIONS
     *(.data .data.* .gnu.linkonce.d*)
     . = ALIGN(0x4);
     __data_end = .;
-  } > REGION_DATA
+  } > REGION_DATA =0xff
   __data_words = (__data_end - __data_start) >> 2;
 
   .bss (NOLOAD):
@@ -120,19 +133,19 @@ SECTIONS
     __abort_stack_start = .;
     __abort_stack_end = ALIGN(__abort_stack_start + _ABORT_STACK_SIZE, 0x8);
 
-    __undef_stack_start = __abort_stack_end;
+    __undef_stack_start = .;
     __undef_stack_end = ALIGN(__undef_stack_start + _UNDEF_STACK_SIZE, 0x8);
 
-    __svc_stack_start = __undef_stack_end;
+    __svc_stack_start = .;
     __svc_stack_end = ALIGN(__svc_stack_start + _SVC_STACK_SIZE, 0x8);
 
-    __fiq_stack_start = __svc_stack_end;
+    __fiq_stack_start = .;
     __fiq_stack_end = ALIGN(__fiq_stack_start + _FIQ_STACK_SIZE, 0x8);
 
     /* Use the largest of .interrupt_stacks or the default trap stack sizes.
        This allows use with either ZFP or Ravenscar run times. */
 
-    __irq_stack_start = __fiq_stack_end;
+    __irq_stack_start = .;
     *(.interrupt_stacks)
     . = MAX(., __irq_stack_start + _IRQ_STACK_SIZE);
     . = ALIGN(0x8);

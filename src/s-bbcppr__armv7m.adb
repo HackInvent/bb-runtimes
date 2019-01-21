@@ -8,7 +8,11 @@
 --                                                                          --
 --        Copyright (C) 1999-2002 Universidad Politecnica de Madrid         --
 --             Copyright (C) 2003-2005 The European Space Agency            --
+<<<<<<< HEAD
 --                     Copyright (C) 2003-2016, AdaCore                     --
+=======
+--                     Copyright (C) 2003-2017, AdaCore                     --
+>>>>>>> upstream/18.0
 --                                                                          --
 -- GNARL is free software; you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -33,11 +37,15 @@
 
 with Ada.Unchecked_Conversion; use Ada;
 
+<<<<<<< HEAD
 with System.Storage_Elements;
+=======
+>>>>>>> upstream/18.0
 with System.Multiprocessors;
 with System.BB.Board_Support;
 with System.BB.Threads;
 with System.BB.Threads.Queues;
+<<<<<<< HEAD
 with System.BB.Time;
 with System.Machine_Code; use System.Machine_Code;
 
@@ -52,6 +60,15 @@ package body System.BB.CPU_Primitives is
    package SSE renames System.Storage_Elements;
    use type SSE.Integer_Address;
    use type SSE.Storage_Offset;
+=======
+with System.Machine_Code; use System.Machine_Code;
+
+package body System.BB.CPU_Primitives is
+   use Board_Support;
+   use Board_Support.Time;
+   use Parameters;
+   use Threads.Queues;
+>>>>>>> upstream/18.0
 
    NL : constant String := ASCII.LF & ASCII.HT;
    --  New line separator in Asm templates
@@ -406,7 +423,10 @@ package body System.BB.CPU_Primitives is
    ----------------------
 
    procedure Sys_Tick_Handler is
+<<<<<<< HEAD
       use Board_Support.Time;
+=======
+>>>>>>> upstream/18.0
       Max_Alarm_Interval : constant Timer_Interval := Timer_Interval'Last / 2;
       Now : constant Timer_Interval := Timer_Interval (Read_Clock);
 

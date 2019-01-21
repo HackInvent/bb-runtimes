@@ -7,8 +7,8 @@
 # Python version starting from 2.6 (yes, it's very old but that's the system
 # python on oldest host).
 
-from build_rts_support.files_holder import FilesHolder
-from build_rts_support.rts_sources import SourceDirs
+from support.files_holder import FilesHolder
+from support.rts_sources import SourceDirs
 
 # PikeOS
 from pikeos import ArmPikeOS, PpcPikeOS, X86PikeOS
@@ -17,16 +17,19 @@ from pikeos import ArmPikeOS, PpcPikeOS, X86PikeOS
 from arm.cortexm import Stm32, Sam, SmartFusion2, LM3S
 
 # Cortex-A/R runtimes
-from arm.cortexar import TMS570, Rpi2, Zynq7000
+from arm.cortexar import TMS570, Rpi2, Rpi2Mc, Zynq7000
 
 # Aarch64
-from aarch64 import Rpi3, AARCH64QEMU
+from aarch64 import Rpi3, Rpi3Mc, ZynqMP
 
 # leon
 from sparc import Leon2, Leon3, Leon4
 
 # powerpc
 from powerpc import MPC8641, MPC8349e, P2020, P5566, P5634
+
+# riscv
+from riscv import Spike
 
 # visium
 from visium import Visium
@@ -854,12 +857,22 @@ def build_configs(target):
         t = Zynq7000()
     elif target == 'rpi2':
         t = Rpi2()
+    elif target == 'rpi2mc':
+        t = Rpi2Mc()
     elif target == 'rpi3':
+<<<<<<< HEAD
         t = RPI3()
     elif target == 'aarch64-qemu':
         t = AARCH64QEMU()
     elif target.startswith('stm32'):
         t = Stm32(target)
+=======
+        t = Rpi3()
+    elif target == 'rpi3mc':
+        t = Rpi3Mc()
+    elif target == 'zynqmp':
+        t = ZynqMP()
+>>>>>>> upstream/18.0
     elif target.startswith('sam'):
         t = Sam(target)
     elif target.startswith('smartfusion2'):
@@ -869,15 +882,28 @@ def build_configs(target):
     elif target == 'openmv2':
         t = Stm32(target)
     elif target == 'tms570':
-        t = TMS570()
+        # by default, the TMS570LS3137 HDK board
+        t = TMS570('tms570ls31')
+    elif target == 'tms570_sci':
+        # by default, the TMS570LS3137 HDK board
+        t = TMS570('tms570ls31', uart_io=True)
+    elif target == 'a6mc':
+        # alias for the LaunchPad TMS570LC43x board
+        t = TMS570('tms570lc43')
+    elif target == 'a6mc_sci':
+        t = TMS570('tms570lc43', uart_io=True)
     elif target == 'lm3s':
         t = LM3S()
     elif target == 'leon2' or target == 'leon':
         t = Leon2()
     elif target == 'leon3':
-        t = Leon3()
+        t = Leon3(smp=False)
+    elif target == 'leon3-smp':
+        t = Leon3(smp=True)
     elif target == 'leon4':
-        t = Leon4()
+        t = Leon4(smp=False)
+    elif target == 'leon4-smp':
+        t = Leon4(smp=True)
     elif target == 'mpc8641':
         t = MPC8641()
     elif target == '8349e':
@@ -890,6 +916,8 @@ def build_configs(target):
         t = P5634()
     elif target == 'mcm':
         t = Visium()
+    elif target == 'spike':
+        t = Spike()
     elif target == 'x86-linux':
         t = X86Native()
     elif target == 'x86-windows':
@@ -909,9 +937,9 @@ def usage():
     print "usage: build-rts.py OPTIONS board1 board2 ..."
     print "Options are:"
     print " -v --verbose      be verbose"
-    print " --bsps-only       generate only BSPs"
-    print " --output=DIR      output directory"
-    print " --prefix=DIR      where built rts will be installed"
+    print " --bsps-only       generate only the BSPs"
+    print " --output=DIR      where to generate the source tree"
+    print " --prefix=DIR      where built rts will be installed."
     print " --gcc-dir=DIR     gcc source directory"
     print " --gnat-dir=DIR    gnat source directory"
     print " --link            create symbolic links"
@@ -939,6 +967,7 @@ def main():
     dest_prjs = None
     dest_srcs = None
     prefix = None
+    experimental = False
     gen_rts_srcs = True
 
     try:
@@ -946,7 +975,7 @@ def main():
             sys.argv[1:], "hvl",
             ["help", "verbose", "bsps-only",
              "output=", "output-bsps=", "output-prjs=", "output-srcs=",
-             "prefix=",
+             "prefix=", "experimental",
              "gcc-dir=", "gnat-dir=",
              "link"])
     except getopt.GetoptError, e:
@@ -978,6 +1007,8 @@ def main():
             prefix = arg
         elif opt == "--bsps-only":
             gen_rts_srcs = False
+        elif opt == "--experimental":
+            experimental = True
         else:
             print "unexpected switch: %s" % opt
             sys.exit(2)
@@ -991,8 +1022,6 @@ def main():
     boards = []
     rts_profile = 'zfp'
 
-    is_pikeos = 'pikeos' in args[0]
-
     for arg in args:
         board = build_configs(arg)
         boards.append(board)
@@ -1001,7 +1030,6 @@ def main():
     # default paths in case not specified from the command-line:
     if dest_bsps is None:
         dest_bsps = os.path.join(dest, 'BSPs')
-
     if not os.path.exists(dest):
         os.makedirs(dest)
     if not os.path.exists(dest_bsps):
@@ -1009,7 +1037,7 @@ def main():
 
     # Install the BSPs
     for board in boards:
-        board.install(dest_bsps, prefix)
+        board.install(dest_bsps, prefix, experimental)
 
     # post-processing, install ada_object_path and ada_source_path to be
     # installed in all runtimes by gprinstall

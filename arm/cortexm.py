@@ -1,6 +1,6 @@
 # This module contains cortex-m bsp support
-from build_rts_support.bsp import BSP
-from build_rts_support.target import Target
+from support.bsp import BSP
+from support.target import Target
 
 
 class CortexMArch(BSP):
@@ -14,12 +14,12 @@ class CortexMArch(BSP):
             'src/s-macres__cortexm3.adb',
             'arm/src/breakpoint_handler-cortexm.S'])
         self.add_sources('gnarl', [
+            'src/s-bbbosu__armv7m.adb',
+            'src/s-bbcpsp__cortexm.ads',
+            'src/s-bbcppr__old.ads',
             'src/s-bbcppr__armv7m.adb',
-            'src/s-bbbosu__armv7m.adb'])
-        self.add_sources('gnarl', [
-            'src/s-bbcppr.ads',
-            'src/s-bbinte.adb',
-            'src/s-bbsumu.adb'])
+            'src/s-bbinte__generic.adb',
+            'src/s-bbsumu__generic.adb'])
 
 
 class CortexMTarget(Target):
@@ -34,10 +34,6 @@ class CortexMTarget(Target):
     @property
     def has_timer_64(self):
         return False
-
-    @property
-    def has_newlib(self):
-        return True
 
     @property
     def has_single_precision_fpu(self):
@@ -134,7 +130,11 @@ class SamCommonBSP(BSP):
         self.add_linker_script('arm/sam/common-ROM.ld', loader='ROM')
 
         self.add_sources('crt0', [
+<<<<<<< HEAD
             'src/s-sam4s.ads',
+=======
+            'arm/sam/s-sam4s.ads',
+>>>>>>> upstream/18.0
             'arm/sam/start-rom.S',
             'arm/sam/start-ram.S',
             'arm/sam/setup_pll.ads'])
@@ -280,6 +280,21 @@ class Stm32CommonBSP(BSP):
     def __init__(self):
         super(Stm32CommonBSP, self).__init__()
 
+<<<<<<< HEAD
+=======
+        self.add_linker_script('arm/stm32/common-RAM.ld', loader='RAM')
+        self.add_linker_script('arm/stm32/common-ROM.ld', loader='ROM')
+
+        self.add_sources('crt0', [
+            'src/s-bbpara__stm32f4.ads',
+            'arm/stm32/s-stm32.ads',
+            'arm/stm32/start-rom.S',
+            'arm/stm32/start-ram.S',
+            'arm/stm32/start-common.S',
+            'arm/stm32/setup_pll.adb',
+            'arm/stm32/setup_pll.ads'])
+
+>>>>>>> upstream/18.0
 
 class Stm32(CortexMTarget):
     """Generic handling of stm32 boards"""
@@ -379,6 +394,7 @@ class Stm32(CortexMTarget):
 
         if self.board == 'stm32f4':
             self.add_sources('crt0', [
+<<<<<<< HEAD
                 'src/s-stm32__f40x.adb'])
         elif self.board == 'stm32f429disco':
             self.add_sources('crt0', [
@@ -386,10 +402,20 @@ class Stm32(CortexMTarget):
         elif self.board == 'openmv2':
             self.add_sources('crt0', [
                 'src/s-stm32__f4x9x.adb'])
+=======
+                'arm/stm32/stm32f40x/s-stm32.adb'])
+        elif self.board == 'stm32f429disco':
+            self.add_sources('crt0', [
+                'arm/stm32/stm32f429x/s-stm32.adb'])
+        elif self.board == 'openmv2':
+            self.add_sources('crt0', [
+                'arm/stm32/stm32f429x/s-stm32.adb'])
+>>>>>>> upstream/18.0
             self.update_pair(
                 's-bbbopa.ads', 'arm/stm32/%s/s-bbbopa-openmv2.ads' % self.mcu)
         elif self.board == 'stm32f469disco':
             self.add_sources('crt0', [
+<<<<<<< HEAD
                 'src/s-stm32__f4x9x.adb'])
         elif self.board == 'stm32f746disco':
             self.add_sources('crt0', [
@@ -405,6 +431,15 @@ class Stm32(CortexMTarget):
                 'arm/stm32/%s/start-common.S' % self.mcu,
                 'arm/stm32/%s/start-ram.S' % self.mcu,
                 'arm/stm32/%s/start-rom.S' % self.mcu])
+=======
+                'arm/stm32/stm32f429x/s-stm32.adb'])
+        elif self.board == 'stm32f746disco':
+            self.add_sources('crt0', [
+                'arm/stm32/stm32f7x/s-stm32.adb'])
+        elif self.board == 'stm32f769disco':
+            self.add_sources('crt0', [
+                'arm/stm32/stm32f7x/s-stm32.adb'])
+>>>>>>> upstream/18.0
 
         # ravenscar support
         self.add_sources('gnarl', [

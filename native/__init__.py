@@ -1,5 +1,5 @@
-from build_rts_support.bsp import BSP
-from build_rts_support.target import DFBBTarget
+from support.bsp import BSP
+from support.target import DFBBTarget
 
 
 class NativeBSP(BSP):
@@ -13,9 +13,9 @@ class NativeBSP(BSP):
 
     def __init__(self):
         super(NativeBSP, self).__init__()
-        self.add_sources('crt0', {
-            's-macres.adb': 's-macres-native.adb',
-            's-textio.adb': 's-textio-stdio.adb'})
+        self.add_sources('crt0', [
+            'src/s-macres__native.adb',
+            'src/s-textio__stdio.adb'])
 
 
 class X86Native(DFBBTarget):
@@ -44,8 +44,8 @@ class X86Native(DFBBTarget):
     def zfp_system_ads(self):
         return 'system-xi-x86.ads'
 
-    def amend_zfp(self, cfg):
-        super(X86Native, self).amend_zfp(cfg)
+    def amend_rts(self, rts_profile, cfg):
+        super(X86Native, self).amend_rts(rts_profile, cfg)
         cfg.rts_xml = (
             '<?xml version="1.0" ?>\n'
             '<gprconfig>\n'

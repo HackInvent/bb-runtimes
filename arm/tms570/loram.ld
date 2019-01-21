@@ -8,7 +8,7 @@
  *                                                                          *
  *      Copyright (C) 1999-2002 Universidad Politecnica de Madrid           *
  *             Copyright (C) 2003-2006 The European Space Agency            *
- *                   Copyright (C) 2003-2013 AdaCore                        *
+ *                   Copyright (C) 2003-2017 AdaCore                        *
  *                                                                          *
  * GNAT is free software;  you can  redistribute it  and/or modify it under *
  * terms of the  GNU General Public License as published  by the Free Soft- *
@@ -39,166 +39,17 @@
 /* This script replaces ld's default linker script, providing the
    appropriate memory map and output format. */
 
-_DEFAULT_STACK_SIZE = (20 * 1024);
+/* board memory regions definition */
+INCLUDE tms570.ld
 
-_SVC_STACK_SIZE   =  256;
-_UNDEF_STACK_SIZE =  256;
-_ABORT_STACK_SIZE =  256;
-_IRQ_STACK_SIZE   = 1024;
-_FIQ_STACK_SIZE   =  256;
-
-ENTRY(start_ram);
-
-MEMORY
-{
-  SRAM (rwx) : ORIGIN = 0x00000000, LENGTH = 256K
-}
-
-REGION_ALIAS("REGION_CODE", SRAM)
-REGION_ALIAS("REGION_DATA", SRAM)
-
-SEARCH_DIR(.)
-__DYNAMIC  =  0;
-
-/*
- * The memory map looks like this:
- * +--------------------------------+ <- low memory
- * | .traps                         |
- * +--------------------------------+
- * | .text                          |
- * |                                |
- * +--------------------------------+
- * | .data                          | initialized data goes here
- * |                                |
- * +--------------------------------+
- * | .bss                           |
- * |       __bss_start              | start of bss, cleared by crt0
- * |    uninitialized data          |
- * |       __bss_end                |
- * |                                |
- * |       __interrupt_stack_start  |
- * |    interrupt stack space       |
- * |       __interrupt_stack_end    |
- * |                                |
- * |       __stack_start            |
- * |    stack space                 |
- * |       __stack_end              | top of stack
- * |       _end                     | start of heap, used by sbrk()
- * +--------------------------------+
- * |    heap space                  |
- * |                                |
- * +--------------------------------+
- * |  remote monitor                |
- * +--------------------------------+ <- high memory
+/* SRAM and FLASH regions are swapped here.
+   This is achieved by setting BMCCR1.MEMSW to 0x5 prior to loading the
+   application.
  */
+__gnat_ram_start = ORIGIN(LORAM);
+__gnat_ram_end   = ORIGIN(LORAM) + LENGTH(LORAM);
 
-SECTIONS
-{
-  .text :
-  {
-    KEEP (*(.traps))
-    *(.text .text.* .gnu.linkonce.t*)
-  } > REGION_CODE
+REGION_ALIAS("REGION_CODE", LORAM)
+REGION_ALIAS("REGION_DATA", LORAM)
 
-  .rodata :
-  {
-    *(.rodata .rodata.* .gnu.linkonce.r*)
-  } > REGION_CODE
-
-  .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } > REGION_CODE
-  PROVIDE_HIDDEN (__exidx_start = .);
-  .ARM.exidx   : { *(.ARM.exidx* .gnu.linkonce.armexidx.*) } > REGION_CODE
-  PROVIDE_HIDDEN (__exidx_end = .);
-
-  .data :
-  {
-    __data_start = .;
-    *(.data .data.* .gnu.linkonce.d*)
-    . = ALIGN(0x4);
-    __data_end = .;
-  } > REGION_DATA
-  __data_words = (__data_end - __data_start) >> 2;
-
-  .bss (NOLOAD): {
-   . = ALIGN(0x8);
-   __bss_start = .;
-
-   *(.bss .bss.*)
-   *(COMMON)
-
-   /* Align the stack to 64 bits */
-
-   . = ALIGN(0x8);
-   __bss_end = .;
-
-   __interrupt_stack_start = .;
-
-   __abort_stack_start = .;
-   __abort_stack_end = ALIGN(__abort_stack_start + _ABORT_STACK_SIZE, 0x8);
-
-   __undef_stack_start = __abort_stack_end;
-   __undef_stack_end = ALIGN(__undef_stack_start + _UNDEF_STACK_SIZE, 0x8);
-
-   __svc_stack_start = __undef_stack_end;
-   __svc_stack_end = ALIGN(__svc_stack_start + _SVC_STACK_SIZE, 0x8);
-
-   __fiq_stack_start = __svc_stack_end;
-   __fiq_stack_end = ALIGN(__fiq_stack_start + _FIQ_STACK_SIZE, 0x8);
-
-   /* Use the largest of .interrupt_stacks or the default trap stack sizes.
-      This allows use with either ZFP or Ravenscar run times. */
-
-   __irq_stack_start = __fiq_stack_end;
-   *(.interrupt_stacks)
-   . = MAX(., __irq_stack_start + _IRQ_STACK_SIZE);
-   . = ALIGN(0x8);
-   __irq_stack_end = .;
- 
-   __interrupt_stack_end = .;
-
-   __stack_start = .;
-
-   /* Reserve the space for the stack to be used by the environment task */
-
-   . += DEFINED (__stack_size) ? __stack_size : _DEFAULT_STACK_SIZE;
-
-   /* Pointer to the top of the stack to be used by the main procedure (the
-      environment task. */
-
-   . = ALIGN(0x8);
-   __stack_end = .;
-
-   _end = .;
-   __heap_start = .;
-   __heap_end = ORIGIN(REGION_DATA) + LENGTH(REGION_DATA);
-  } > REGION_DATA
-
-   __bss_words = (__bss_end - __bss_start) >> 2;
-
-  /* DWARF debug sections.
-     Symbols in the DWARF debugging sections are relative to the beginning
-     of the section so we begin them at 0.  */
-  /* DWARF 1 */
-  .debug          0 : { *(.debug) }
-  .line           0 : { *(.line) }
-  /* GNU DWARF 1 extensions */
-  .debug_srcinfo  0 : { *(.debug_srcinfo) }
-  .debug_sfnames  0 : { *(.debug_sfnames) }
-  /* DWARF 1.1 and DWARF 2 */
-  .debug_aranges  0 : { *(.debug_aranges) }
-  .debug_pubnames 0 : { *(.debug_pubnames) }
-  /* DWARF 2 */
-  .debug_info     0 : { *(.debug_info .gnu.linkonce.wi.*) }
-  .debug_abbrev   0 : { *(.debug_abbrev) }
-  .debug_line     0 : { *(.debug_line) }
-  .debug_frame    0 : { *(.debug_frame) }
-  .debug_str      0 : { *(.debug_str) }
-  .debug_loc      0 : { *(.debug_loc) }
-  .debug_macinfo  0 : { *(.debug_macinfo) }
-  /* DWARF 3 */
-  .debug_pubtypes 0 : { *(.debug_pubtypes) }
-  .debug_ranges   0 : { *(.debug_ranges) }
-  .gnu.attributes 0 : { KEEP (*(.gnu.attributes)) }
-  /DISCARD/ : { *(.note.GNU-stack) *(.gnu_debuglink) *(.gnu.lto_*) }
-}
-
+INCLUDE common.ld

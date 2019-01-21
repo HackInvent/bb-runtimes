@@ -8,7 +8,11 @@
 --                                                                          --
 --        Copyright (C) 1999-2002 Universidad Politecnica de Madrid         --
 --             Copyright (C) 2003-2005 The European Space Agency            --
+<<<<<<< HEAD
 --                     Copyright (C) 2003-2016, AdaCore                     --
+=======
+--                     Copyright (C) 2003-2017, AdaCore                     --
+>>>>>>> upstream/18.0
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -38,7 +42,10 @@
 
 --  This is the STM32F40x (ARMv7) version of this package
 
+<<<<<<< HEAD
 with Interfaces.STM32.RCC;
+=======
+>>>>>>> upstream/18.0
 with System.STM32;
 with System.BB.Board_Parameters;
 with System.BB.MCU_Parameters;

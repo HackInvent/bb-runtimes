@@ -8,7 +8,11 @@
 --                                                                          --
 --        Copyright (C) 1999-2002 Universidad Politecnica de Madrid         --
 --             Copyright (C) 2003-2004 The European Space Agency            --
+<<<<<<< HEAD
 --                     Copyright (C) 2003-2016, AdaCore                     --
+=======
+--                     Copyright (C) 2003-2017, AdaCore                     --
+>>>>>>> upstream/18.0
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -61,6 +65,7 @@ package System.BB.CPU_Specific is
 
    type SIMD_Registers_Type is array (0 .. 31) of SIMD_Vector_Type;
 
+<<<<<<< HEAD
    type Context_Buffer is record
 
       --  Only callee-saved registers need to be saved, as the context switch
@@ -84,6 +89,46 @@ package System.BB.CPU_Specific is
       FPCR : Interfaces.Unsigned_32;
 
       V  : SIMD_Registers_Type;
+=======
+   type FPU_Context_Buffer is record
+      --  Floating point context
+
+      V_Init : Boolean;
+      --  Set to true when the structure contains an actually saved context
+
+      FPSR   : Interfaces.Unsigned_32;
+      --  Status register
+
+      FPCR   : Interfaces.Unsigned_32;
+      --  Control register
+
+      V      : SIMD_Registers_Type;
+      --  General-purpose FPU registers
+   end record;
+
+   type FPU_Context_Access is access all FPU_Context_Buffer;
+
+   type Context_Buffer is record
+   --  Only callee-saved registers need to be saved, as the context switch
+   --  is always synchronous.
+
+      X19     : Interfaces.Unsigned_64;  --  Offset : 0
+      X20     : Interfaces.Unsigned_64;
+      X21     : Interfaces.Unsigned_64;  --  Offset : 16
+      X22     : Interfaces.Unsigned_64;
+      X23     : Interfaces.Unsigned_64;  --  Offset : 32
+      X24     : Interfaces.Unsigned_64;
+      X25     : Interfaces.Unsigned_64;  --  Offset : 48
+      X26     : Interfaces.Unsigned_64;
+      X27     : Interfaces.Unsigned_64;  --  Offset : 64
+      X28     : Interfaces.Unsigned_64;
+      X29     : Interfaces.Unsigned_64;  --  FP, Offset : 80
+      X30     : Interfaces.Unsigned_64;  --  LR
+      SP      : Interfaces.Unsigned_64;  --  Offset : 96
+
+      FPU     : aliased FPU_Context_Buffer;
+      Running : FPU_Context_Access := null;
+>>>>>>> upstream/18.0
    end record;
 
    Stack_Alignment : constant := 16;

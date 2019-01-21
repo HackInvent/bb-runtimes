@@ -8,7 +8,7 @@
  *                                                                          *
  *      Copyright (C) 1999-2002 Universidad Politecnica de Madrid           *
  *             Copyright (C) 2003-2006 The European Space Agency            *
- *                   Copyright (C) 2003-2012 AdaCore                        *
+ *                   Copyright (C) 2003-2017 AdaCore                        *
  *                                                                          *
  * GNAT is free software;  you can  redistribute it  and/or modify it under *
  * terms of the  GNU General Public License as published  by the Free Soft- *
@@ -47,13 +47,16 @@ _ABORT_STACK_SIZE =  256;
 _IRQ_STACK_SIZE   = 0;
 _FIQ_STACK_SIZE   =  0;
 
-ENTRY(start_flash);
+ENTRY(__gnat_init);
+
+/* In this mode, the memory map is the default one */
+__gnat_ram_at_0 = 0;
 
 MEMORY
 {
   FLASH (rx)  : ORIGIN = 0x00000000, LENGTH = 3M
   SRAM (rwx)  : ORIGIN = 0x0803f000, LENGTH = 4K
-  SDRAM (rwx) : ORIGIN = 0x6000000, LENGTH = 8M
+  SDRAM (rwx) : ORIGIN = 0x06000000, LENGTH = 8M
 }
 
 REGION_ALIAS("REGION_CODE", FLASH)

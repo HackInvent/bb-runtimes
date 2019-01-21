@@ -1,8 +1,25 @@
 # User variables. type make to get some help
+
+# Parallelism used when building the runtimes
 JOBS=0
+
+# Whether to create symlinks or just copy files when generating the rts
+LINK=
+
+# Build with Debug ?
+DEBUG=
+
+# The target to build
 TARGET=
-GNAT_SOURCES=$(SRC_DIR)/../gnat
-GCC_SOURCES=$(SRC_DIR)/../gcc
+
+# Whether to just build BSPs
+BSPS=
+
+# Sources of GNAT and GCC
+GNAT=$(SRC_DIR)/../gnat
+GCC=$(SRC_DIR)/../gcc
+GNAT_SOURCES=$(GNAT)
+GCC_SOURCES=$(GCC)
 
 ###################
 # Other variables #
@@ -16,56 +33,74 @@ SRC_DIR:=$(shell pwd)
 
 TARGETS=none
 
-ifeq ($(TARGET), powerpc-elf)
+ifeq ($(TARGET),$(filter $(TARGET),powerpc-elf ppc-elf ppc))
+    TGT=powerpc-elf
     TARGETS=mpc8641 8349e
 endif
 
-ifeq ($(TARGET), powerpc-eabispe)
+ifeq ($(TARGET),$(filter $(TARGET),powerpc-eabispe p55-elf p55))
+    TGT=powerpc-eabispe
     TARGETS=p2020 p5566 mpc5634
 endif
 
-ifeq ($(TARGET), aarch64-elf)
-    TARGETS=aarch64-qemu rpi3
+ifeq ($(TARGET),$(filter $(TARGET),aarch64-elf aarch64))
+    TGT=aarch64-elf
+    TARGETS=rpi3 zynqmp
 endif
 
-ifeq ($(TARGET), arm-eabi)
+ifeq ($(TARGET),$(filter $(TARGET),arm-eabi arm-elf arm))
+    TGT=arm-eabi
     TARGETS=zynq7000 rpi2 sam4s samg55 smartfusion2 openmv2 stm32f4 \
-       stm32f429disco stm32f469disco stm32f746disco stm32f769disco stm32h7xx tms570 lm3s
-endif
+       stm32f429disco stm32f469disco stm32f746disco stm32f769disco stm32h7xx \
+       tms570 a6mc lm3s
 
-ifeq ($(TARGET), aarch64-elf)
-    RTS_LIST=zfp-qemu
-endif
-
-ifeq ($(TARGET), leon-elf)
+ifeq ($(TARGET),$(filter $(TARGET),leon-elf leon2-elf leon leon2))
+    TGT=leon-elf
     TARGETS=leon
 endif
 
-ifeq ($(TARGET), leon3-elf)
-    TARGETS=leon3
+ifeq ($(TARGET),$(filter $(TARGET),leon3-elf leon3))
+   TGT=leon3-elf
+   TARGETS=leon3 leon3-smp
 endif
 
-ifeq ($(TARGET), visium-elf)
+ifeq ($(TARGET),$(filter $(TARGET),visium-elf visium))
+    TGT=visium-elf
     TARGETS=mcm
 endif
 
-ifeq ($(TARGET), i686-pc-linux-gnu)
+ifeq ($(TARGET),$(filter $(TARGET),i686-pc-linux-gnu x86-linux))
+    TGT=i686-pc-linux-gnu
     TARGETS=x86-linux
 endif
 
-ifeq ($(TARGET), i686-pc-mingw32)
+ifeq ($(TARGET),$(filter $(TARGET),i686-pc-mingw32 x86-windows))
+    TGT=i686-pc-mingw32
     TARGETS=x86-windows
 endif
 
-ifeq ($(TARGET), arm-sysgo-pikeos)
+ifeq ($(TARGET),$(filter $(TARGET),x86_64-pc-linux-gnu x86_64-linux))
+    TGT=x86_64-pc-linux-gnu
+    TARGETS=x86_64-linux
+endif
+
+ifeq ($(TARGET),$(filter $(TARGET),x86_64-pc-mingw32 x86_64-windows))
+    TGT=x86_64-pc-mingw32
+    TARGETS=x86_64-windows
+endif
+
+ifeq ($(TARGET),$(filter $(TARGET),arm-sysgo-pikeos arm-pikeos))
+    TGT=arm-sysgo-pikeos
     TARGETS=arm-pikeos
 endif
 
-ifeq ($(TARGET), powerpc-sysgo-pikeos)
+ifeq ($(TARGET),$(filter $(TARGET),powerpc-sysgo-pikeos ppc-pikeos))
+    TGT=powerpc-sysgo-pikeos
     TARGETS=ppc-pikeos
 endif
 
-ifeq ($(TARGET), i586-sysgo-pikeos)
+ifeq ($(TARGET),$(filter $(TARGET),i586-sysgo-pikeos x86-pikeos))
+    TGT=i586-sysgo-pikeos
     TARGETS=x86-pikeos
 endif
 
@@ -81,14 +116,31 @@ endif
 # Tools #
 #########
 
-GCC_PREFIX:=$(abspath $(dir $(shell which $(TARGET)-gcc))/..)
+GCC_PREFIX:=$(abspath $(dir $(shell which $(TGT)-gcc))/..)
 ifneq ($(PREFIX),)
   GCC_PREFIX:=$(PREFIX)
 endif
 
-GPRINSTALL:=GPR_PROJECT_PATH=obj/$(TARGET)/lib/gnat gprinstall -p -f \
-              --prefix=$(GCC_PREFIX)
-GPRBUILD:=GPR_PROJECT_PATH=obj/$(TARGET)/lib/gnat gprbuild -j$(JOBS)
+BUILD_RTS_FLAGS=
+GPRBUILD_FLAGS:=-j$(JOBS) -v -s
+
+ifneq ($(DEBUG),)
+  GPRBUILD_FLAGS:=$(GPRBUILD_FLAGS) -XBUILD=Debug
+endif
+
+ifneq ($(LINK),)
+  BUILD_RTS_FLAGS:=$(BUILD_RTS_FLAGS) --link
+endif
+
+ifneq ($(BSPS),)
+  BUILD_RTS_FLAGS:=$(BUILD_RTS_FLAGS) --bsps-only
+endif
+
+GPRBUILD:=GPR_PROJECT_PATH=obj/$(TGT)/lib/gnat gprbuild $(GPRBUILD_FLAGS)
+GPRINSTALL:=GPR_PROJECT_PATH=obj/$(TGT)/lib/gnat gprinstall \
+              --prefix=$(GCC_PREFIX) -f
+BUILD_RTS:=./build-rts.py --experimental $(BUILD_RTS_FLAGS)
+
 
 default:
 	@echo "This makefile builds&install recompilable runtimes"
@@ -124,205 +176,63 @@ default:
 	@echo "  make <board>.zfpinstall"
 	@echo "                    Install the board's zfp rts in gcc"
 
-.PHONY: force
+obj/$(TGT):
+	mkdir -p obj && rm -rf obj/$(TGT)
+	set -x; $(BUILD_RTS) --output=obj/$(TGT) --gnat-dir=$(GNAT_SOURCES) --gcc-dir=$(GCC_SOURCES) $(TARGETS)
 
-obj/$(TARGET): force
-	mkdir -p obj && rm -rf obj/$(TARGET)
-	set -x; ./build-rts.py --output=obj/$(TARGET) --gnat-dir=$(GNAT_SOURCES) --gcc-dir=$(GCC_SOURCES) $(TARGETS)
+srcs:
+	rm -rf obj/$(TGT)
+	$(MAKE) obj/$(TGT)
 
-srcs: obj/$(TARGET)
-
-all: obj/$(TARGET)
-	for f in obj/$(TARGET)/BSPs/*.gpr; do \
+all: obj/$(TGT)
+	for f in obj/$(TGT)/BSPs/*.gpr; do \
 	  $(GPRBUILD) -P $$f; \
 	done
 
 install: all
-	for f in obj/$(TARGET)/BSPs/*.gpr; do \
-	  $(GPRINSTALL) -P $$f; \
+	for f in obj/$(TGT)/BSPs/*.gpr; do \
+	  echo $(GPRINSTALL) -P $$f; \
+	  $(GPRINSTALL) --uninstall -q -P $$f; \
+	  $(GPRINSTALL) -p -f -P $$f; \
 	done
 
-# powerpc-elf runtimes
-zfp-mpc8641.src:
-	@$(BUILD_RTS) zfp/8641d
+%.build: obj/$(TGT)
+	for f in obj/$(TGT)/BSPs/*_$*.gpr; do \
+	  $(GPRBUILD) -P $$f; \
+	done
 
-ravenscar-sfp-mpc8641.src:
-	@$(BUILD_RTS) ravenscar-sfp/8641d
-
-ravenscar-full-mpc8641.src:
-	@$(BUILD_RTS) ravenscar-full/8641d --gcc-dir=$(GCC_SOURCES)
-
-# powerpc-eabispe runtimes
-zfp-p2020.src:
-	@$(BUILD_RTS) zfp/p2020
-
-ravenscar-sfp-p2020.src:
-	@$(BUILD_RTS) ravenscar-sfp/p2020
-
-ravenscar-full-p2020.src:
-	@$(BUILD_RTS) ravenscar-full/p2020 --gcc-dir=$(GCC_SOURCES)
-
-ravenscar-sfp-p5566.src:
-	@$(BUILD_RTS) ravenscar-sfp/p5566
-
-ravenscar-full-p5566.src:
-	@$(BUILD_RTS) ravenscar-full/p5566 --gcc-dir=$(GCC_SOURCES)
-
-zfp-p5566.src:
-	@$(BUILD_RTS) zfp/p5566
-
-zfp-mpc5634.src:
-	@$(BUILD_RTS) zfp/mpc5634
-
-# aarch64-elf runtimes
-zfp-qemu.src:
-	$(BUILD_RTS) zfp/aarch64-qemu
-
-# leon-elf runtimes
-zfp-leon.src:
-	$(BUILD_RTS) zfp/leon
-
-ravenscar-sfp-leon.src:
-	$(BUILD_RTS) ravenscar-sfp/leon
-
-ravenscar-full-leon.src:
-	$(BUILD_RTS) ravenscar-full/leon --gcc-dir=$(GCC_SOURCES)
-
-# leon3-elf runtimes
-zfp-leon3.src:
-	$(BUILD_RTS) zfp/leon3
-
-ravenscar-sfp-leon3.src:
-	$(BUILD_RTS) ravenscar-sfp/leon3
-
-ravenscar-full-leon3.src:
-	$(BUILD_RTS) ravenscar-full/leon3 --gcc-dir=$(GCC_SOURCES)
-
-# arm-eabi runtimes
-zfp-tms570.src:
-	@$(BUILD_RTS) zfp/tms570
-
-ravenscar-sfp-tms570.src:
-	@$(BUILD_RTS) ravenscar-sfp/tms570
-
-ravenscar-full-tms570.src:
-	@$(BUILD_RTS) ravenscar-full/tms570 --gcc-dir=$(GCC_SOURCES)
-
-ravenscar-full-tms570-sci.src:
-	@$(BUILD_RTS) ravenscar-full/tms570-sci --gcc-dir=$(GCC_SOURCES)
-
-zfp-lm3s.src:
-	@$(BUILD_RTS) zfp/lm3s
-
-zfp-stm32f4.src:
-	@$(BUILD_RTS) zfp/stm32f4
-
-ravenscar-sfp-stm32f4.src:
-	@$(BUILD_RTS) ravenscar-sfp/stm32f4
-
-ravenscar-full-stm32f4.src:
-	@$(BUILD_RTS) ravenscar-full/stm32f4
-
-zfp-zynq7000.src:
-	@$(BUILD_RTS) zfp/zynq7000
-
-ravenscar-sfp-zynq7000.src:
-	@$(BUILD_RTS) ravenscar-sfp/zynq7000
-
-ravenscar-full-zynq7000.src:
-	@$(BUILD_RTS) ravenscar-full/zynq7000
-
-zfp-stm32f429disco.src:
-	@$(BUILD_RTS) zfp/stm32f429disco
-
-ravenscar-sfp-stm32f429disco.src:
-	@$(BUILD_RTS) ravenscar-sfp/stm32f429disco
-
-ravenscar-full-stm32f429disco.src:
-	@$(BUILD_RTS) ravenscar-full/stm32f429disco
-
-zfp-stm32f469disco.src:
-	@$(BUILD_RTS) zfp/stm32f469disco
-
-ravenscar-sfp-stm32f469disco.src:
-	@$(BUILD_RTS) ravenscar-sfp/stm32f469disco
-
-ravenscar-full-stm32f469disco.src:
-	@$(BUILD_RTS) ravenscar-full/stm32f469disco
-
-zfp-stm32f7disco.src:
-	@$(BUILD_RTS) zfp/stm32f7disco
-
-ravenscar-sfp-stm32f7disco.src:
-	@$(BUILD_RTS) ravenscar-sfp/stm32f7disco
-
-ravenscar-full-stm32f7disco.src:
-	@$(BUILD_RTS) ravenscar-full/stm32f7disco
-
-zfp-stm32f769disco.src:
-	@$(BUILD_RTS) zfp/stm32f769disco
-
-ravenscar-sfp-stm32f769disco.src:
-	@$(BUILD_RTS) ravenscar-sfp/stm32f769disco
-
-ravenscar-full-stm32f769disco.src:
-	@$(BUILD_RTS) ravenscar-full/stm32f769disco
-
-ravenscar-sfp-sam4s.src:
-	@$(BUILD_RTS) ravenscar-sfp/sam4s
-
-ravenscar-sfp-samg55.src:
-	@$(BUILD_RTS) ravenscar-sfp/samg55
-
-# visium-elf
-zfp-mcm.src:
-	@$(BUILD_RTS) zfp/mcm
-
-# Native
-zfp-x86-linux.src:
-	@$(BUILD_RTS) zfp/x86-linux
-
-zfp-x86-windows.src:
-	@$(BUILD_RTS) zfp/x86-windows
-
-# pikeos
-zfp-arm-pikeos.src:
-	@$(BUILD_RTS) zfp/arm-pikeos
-
-ravenscar-sfp-arm-pikeos.src:
-	@$(BUILD_RTS) ravenscar-sfp/arm-pikeos
-
-%.fullbuild: obj/$(TARGET)
-	if [ ! -f obj/$(TARGET)/BSPs/ravenscar_full_$*.gpr ]; then \
+%.fullbuild: obj/$(TGT)
+	if [ ! -f obj/$(TGT)/BSPs/ravenscar_full_$*.gpr ]; then \
 	  echo "no ravenscar-full runtime for $*"; \
 	  exit 1; \
 	fi
-	$(GPRBUILD) -P obj/$(TARGET)/BSPs/ravenscar_full_$*.gpr
+	$(GPRBUILD) -P obj/$(TGT)/BSPs/ravenscar_full_$*.gpr
 
-%.sfpbuild: obj/$(TARGET)
-	if [ ! -f obj/$(TARGET)/BSPs/ravenscar_sfp_$*.gpr ]; then \
+%.sfpbuild: obj/$(TGT)
+	if [ ! -f obj/$(TGT)/BSPs/ravenscar_sfp_$*.gpr ]; then \
 	  echo "no ravenscar-sfp runtime for $*"; \
 	  exit 1; \
 	fi
-	$(GPRBUILD) -P obj/$(TARGET)/BSPs/ravenscar_sfp_$*.gpr
+	$(GPRBUILD) -P obj/$(TGT)/BSPs/ravenscar_sfp_$*.gpr
 
-%.zfpbuild: obj/$(TARGET)
-	if [ ! -f obj/$(TARGET)/BSPs/zfp_$*.gpr ]; then \
+%.zfpbuild: obj/$(TGT)
+	if [ ! -f obj/$(TGT)/BSPs/zfp_$*.gpr ]; then \
 	  echo "no ravenscar-sfp runtime for $*"; \
 	  exit 1; \
 	fi
-	$(GPRBUILD) -P obj/$(TARGET)/BSPs/zfp_$*.gpr
+	$(GPRBUILD) -P obj/$(TGT)/BSPs/zfp_$*.gpr
 
 %.install: %.build
-	for f in obj/$(TARGET)/BSPs/*_$*.gpr; do \
-	  $(GPRINSTALL) -P $$f; \
+	for f in obj/$(TGT)/BSPs/*_$*.gpr; do \
+	  $(GPRINSTALL) --uninstall -P $$f; \
+	  $(GPRINSTALL) -p -f -P $$f; \
 	done
 
 %.fullinstall: %.fullbuild
-	$(GPRINSTALL) -P obj/$(TARGET)/BSPs/ravenscar_full_$*.gpr
+	$(GPRINSTALL) -P obj/$(TGT)/BSPs/ravenscar_full_$*.gpr
 
 %.sfpinstall: %.sfpbuild
-	$(GPRINSTALL) -P obj/$(TARGET)/BSPs/ravenscar_sfp_$*.gpr
+	$(GPRINSTALL) -P obj/$(TGT)/BSPs/ravenscar_sfp_$*.gpr
 
 %.zfpinstall: %.zfpbuild
-	$(GPRINSTALL) -P obj/$(TARGET)/BSPs/zfp_$*.gpr
+	$(GPRINSTALL) -P obj/$(TGT)/BSPs/zfp_$*.gpr

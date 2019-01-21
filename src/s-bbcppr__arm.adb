@@ -8,7 +8,11 @@
 --                                                                          --
 --        Copyright (C) 1999-2002 Universidad Politecnica de Madrid         --
 --             Copyright (C) 2003-2005 The European Space Agency            --
+<<<<<<< HEAD
 --                     Copyright (C) 2003-2016, AdaCore                     --
+=======
+--                     Copyright (C) 2003-2017, AdaCore                     --
+>>>>>>> upstream/18.0
 --                                                                          --
 -- GNARL is free software; you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -32,6 +36,7 @@
 --  instruction set. It is not suitable for ARMv7-M targets, which use
 --  Thumb2.
 
+<<<<<<< HEAD
 with Ada.Unchecked_Conversion; use Ada;
 
 with System.Storage_Elements;
@@ -45,13 +50,28 @@ with System.Machine_Code; use System.Machine_Code;
 
 package body System.BB.CPU_Primitives is
    use BB.Parameters;
+=======
+with Interfaces; use Interfaces;
+
+with System.Multiprocessors;
+with System.BB.Threads;
+with System.BB.Threads.Queues;
+with System.BB.Board_Support;
+with System.BB.Parameters;
+with System.Machine_Code; use System.Machine_Code;
+
+package body System.BB.CPU_Primitives is
+>>>>>>> upstream/18.0
    use System.BB.Threads;
    use System.BB.Board_Support.Multiprocessors;
    use System.Multiprocessors;
    use System.BB.CPU_Specific;
 
    package SSE renames System.Storage_Elements;
+<<<<<<< HEAD
    use type SSE.Integer_Address;
+=======
+>>>>>>> upstream/18.0
    use type SSE.Storage_Offset;
 
    NL : constant String := ASCII.LF & ASCII.HT;
@@ -61,6 +81,7 @@ package body System.BB.CPU_Primitives is
    -- Traps --
    -----------
 
+<<<<<<< HEAD
    type Trap_Handler_Ptr is access procedure (Id : Vector_Id);
    function To_Pointer is new Unchecked_Conversion (Address, Trap_Handler_Ptr);
 
@@ -72,6 +93,8 @@ package body System.BB.CPU_Primitives is
    procedure GNAT_Error_Handler (Trap : Vector_Id);
    pragma No_Return (GNAT_Error_Handler);
 
+=======
+>>>>>>> upstream/18.0
    procedure Undef_Handler;
    pragma Machine_Attribute (Undef_Handler, "interrupt");
    pragma Export (Asm, Undef_Handler, "__gnat_undef_trap");
@@ -80,6 +103,18 @@ package body System.BB.CPU_Primitives is
    pragma Machine_Attribute (Dabt_Handler, "interrupt");
    pragma Export (Asm, Dabt_Handler, "__gnat_dabt_trap");
 
+<<<<<<< HEAD
+=======
+   procedure Irq_User_Handler;
+   pragma Import (Ada, Irq_User_Handler, "__gnat_irq_handler");
+
+   procedure Fiq_User_Handler;
+   pragma Import (Ada, Fiq_User_Handler, "__gnat_fiq_handler");
+
+   procedure Common_Handler (Is_FIQ : Boolean)
+     with Inline_Always;
+
+>>>>>>> upstream/18.0
    procedure FIQ_Handler;
    pragma Machine_Attribute (FIQ_Handler, "interrupt");
    pragma Export (Asm, FIQ_Handler, "__gnat_fiq_trap");
@@ -88,6 +123,7 @@ package body System.BB.CPU_Primitives is
    pragma Machine_Attribute (IRQ_Handler, "interrupt");
    pragma Export (Asm, IRQ_Handler, "__gnat_irq_trap");
 
+<<<<<<< HEAD
    ---------------------------
    -- Context Buffer Layout --
    ---------------------------
@@ -108,6 +144,8 @@ package body System.BB.CPU_Primitives is
 
    pragma Assert (S31 - S0 = 31 and R1 = R0 + 1 and LR = SP + 1);
 
+=======
+>>>>>>> upstream/18.0
    ----------------------------
    -- Floating Point Context --
    ----------------------------
@@ -123,6 +161,7 @@ package body System.BB.CPU_Primitives is
    --  rather incur the trap at the user level than leaving interrupt masked
    --  longer than absolutely necessary.
 
+<<<<<<< HEAD
    type Thread_Table is array (System.Multiprocessors.CPU) of Thread_Id;
    pragma Volatile_Components (Thread_Table);
 
@@ -132,6 +171,20 @@ package body System.BB.CPU_Primitives is
    function Get_SPSR return Word with Inline;
 
    Current_FPU_Context :  Thread_Table := (others => Null_Thread_Id);
+=======
+   type FPU_Context_Table is
+     array (System.Multiprocessors.CPU) of VFPU_Context_Access;
+   pragma Volatile_Components (FPU_Context_Table);
+
+   function  Is_FPU_Enabled return Boolean with Inline;
+   procedure Set_FPU_Enabled (Enabled : Boolean) with Inline;
+   procedure FPU_Context_Switch (To : VFPU_Context_Access) with Inline;
+   function Get_SPSR return Unsigned_32 with Inline;
+
+   Default_FPSCR       : Unsigned_32 := 0;
+
+   Current_FPU_Context : FPU_Context_Table := (others => null);
+>>>>>>> upstream/18.0
    --  This variable contains the last thread that used the floating point unit
    --  for each CPU. Hence, it points to the place where the floating point
    --  state must be stored. Null means no task using it.
@@ -140,11 +193,19 @@ package body System.BB.CPU_Primitives is
    -- Get_SPSR --
    --------------
 
+<<<<<<< HEAD
    function Get_SPSR return Word is
       SPSR : Word;
    begin
       Asm ("mrs %0, SPSR",
            Outputs  => Word'Asm_Output ("=r", SPSR),
+=======
+   function Get_SPSR return Unsigned_32 is
+      SPSR : Unsigned_32;
+   begin
+      Asm ("mrs %0, SPSR",
+           Outputs  => Unsigned_32'Asm_Output ("=r", SPSR),
+>>>>>>> upstream/18.0
            Volatile => True);
       return SPSR;
    end Get_SPSR;
@@ -155,6 +216,7 @@ package body System.BB.CPU_Primitives is
 
    procedure Dabt_Handler is
    begin
+<<<<<<< HEAD
       Trap_Handlers (Data_Abort_Vector) (Data_Abort_Vector);
    end Dabt_Handler;
 
@@ -178,19 +240,89 @@ package body System.BB.CPU_Primitives is
 
    procedure IRQ_Handler is
       SPSR : Word;
+=======
+      raise Constraint_Error with "data abort";
+   end Dabt_Handler;
+
+   -----------------
+   -- IRQ_Handler --
+   -----------------
+
+   procedure IRQ_Handler
+   is
+   begin
+      Common_Handler (False);
+   end IRQ_Handler;
+
+   -----------------
+   -- FIQ_Handler --
+   -----------------
+
+   procedure FIQ_Handler
+   is
+   begin
+      Common_Handler (True);
+   end FIQ_Handler;
+
+   --------------------
+   -- Common_Handler --
+   --------------------
+
+   procedure Common_Handler (Is_FIQ : Boolean)
+   is
+      use System.BB.Threads.Queues;
+      SPSR     : Unsigned_32;
+      CPU_Id   : constant System.Multiprocessors.CPU :=
+                   Board_Support.Multiprocessors.Current_CPU;
+      IRQ_Ctxt : aliased VFPU_Context_Buffer;
+      Old_Ctxt : constant VFPU_Context_Access :=
+                   Running_Thread_Table (CPU_Id).Context.Running;
+>>>>>>> upstream/18.0
 
    begin
       --  Force trap if handler uses floating point
 
       Set_FPU_Enabled (False);
 
+<<<<<<< HEAD
+=======
+      --  Prepare the IRQ handler FPU context
+      IRQ_Ctxt.V_Init := False;
+      Running_Thread_Table (CPU_Id).Context.Running :=
+        IRQ_Ctxt'Unchecked_Access;
+
+>>>>>>> upstream/18.0
       --  If we are going to do context switches or otherwise allow IRQ's
       --  from within the interrupt handler, the SPSR register needs to
       --  be saved too.
 
       SPSR := Get_SPSR;
 
+<<<<<<< HEAD
       Trap_Handlers (Interrupt_Request_Vector) (Interrupt_Request_Vector);
+=======
+      --  Call the handler
+      if Is_FIQ then
+         Fiq_User_Handler;
+      else
+         Irq_User_Handler;
+      end if;
+
+      --  Check FPU usage in handler
+      if Current_FPU_Context (CPU_Id) = IRQ_Ctxt'Unchecked_Access then
+         --  FPU was used.
+         --  Invalidate the current FPU context as we're leaving the IRQ
+         --  handler.
+         Current_FPU_Context (CPU_Id) := null;
+         Set_FPU_Enabled (False);
+
+      elsif Current_FPU_Context (CPU_Id) = Old_Ctxt then
+         --  We're back to the last thread that used FPU.
+         Set_FPU_Enabled (True);
+      end if;
+
+      Running_Thread_Table (CPU_Id).Context.Running := Old_Ctxt;
+>>>>>>> upstream/18.0
 
       --  As the System.BB.Interrupts.Interrupt_Wrapper returns to the low
       --  level interrupt handler without checking for required context
@@ -212,9 +344,15 @@ package body System.BB.CPU_Primitives is
       end if;
 
       Asm ("msr   SPSR_cxsf, %0",
+<<<<<<< HEAD
          Inputs   => (Word'Asm_Input ("r", SPSR)),
          Volatile => True);
    end IRQ_Handler;
+=======
+         Inputs   => (Unsigned_32'Asm_Input ("r", SPSR)),
+         Volatile => True);
+   end Common_Handler;
+>>>>>>> upstream/18.0
 
    -------------------
    -- Undef_Handler --
@@ -226,6 +364,7 @@ package body System.BB.CPU_Primitives is
          --  If FPU is not enabled, do an FPU context switch first and resume.
          --  If the fault is not due to the FPU, it will trigger again.
 
+<<<<<<< HEAD
          declare
             SPSR          : constant Word := Get_SPSR;
             In_IRQ_Or_FIQ : constant Boolean := (SPSR mod 32) in 17 | 18;
@@ -239,6 +378,14 @@ package body System.BB.CPU_Primitives is
       else
          Trap_Handlers (Undefined_Instruction_Vector)
            (Undefined_Instruction_Vector);
+=======
+         Set_FPU_Enabled (True);
+         FPU_Context_Switch
+           (Queues.Running_Thread_Table (Current_CPU).Context.Running);
+
+      else
+         raise Program_Error with "illegal instruction";
+>>>>>>> upstream/18.0
       end if;
    end Undef_Handler;
 
@@ -257,13 +404,29 @@ package body System.BB.CPU_Primitives is
       --  Whenever switching to a new context, disable the FPU, so we don't
       --  have to worry about its state. It is much more efficient to lazily
       --  switch the FPU when it is actually used.
+<<<<<<< HEAD
+=======
+      --  The only exception is when we're switching back to the last thread
+      --  that used the FPU registers: in this case, we can leave the FPU
+      --  enabled to minimize the number of FPU traps.
+>>>>>>> upstream/18.0
 
       --  When calling this routine from modes other than user or system,
       --  the caller is responsible for saving the (banked) SPSR register.
       --  This register is only visible in banked modes, so can't be saved
       --  here.
 
+<<<<<<< HEAD
       Set_FPU_Enabled (False);
+=======
+      if Current_FPU_Context (CPU_Id) /=
+        First_Thread_Table (CPU_Id).Context.Running
+      then
+         Set_FPU_Enabled (False);
+      else
+         Set_FPU_Enabled (True);
+      end if;
+>>>>>>> upstream/18.0
 
       --  Called with interrupts disabled
 
@@ -340,25 +503,46 @@ package body System.BB.CPU_Primitives is
    -- FPU_Context_Switch --
    ------------------------
 
+<<<<<<< HEAD
    procedure FPU_Context_Switch (To : Thread_Id) is
       CPU_Id : constant System.Multiprocessors.CPU := Current_CPU;
       C : constant Thread_Id := Current_FPU_Context (CPU_Id);
+=======
+   procedure FPU_Context_Switch (To : VFPU_Context_Access) is
+      CPU_Id : constant System.Multiprocessors.CPU := Current_CPU;
+      C : constant VFPU_Context_Access := Current_FPU_Context (CPU_Id);
+>>>>>>> upstream/18.0
 
    begin
       if C /= To then
          if C /= null then
             Asm (Template => "vstm %1, {d0-d15}" & NL & "fmrx %0, fpscr",
+<<<<<<< HEAD
                  Outputs  => (Address'Asm_Output ("=r", C.Context (FPSCR))),
                  Inputs   => (Address'Asm_Input ("r", C.Context (S0)'Address)),
                  Clobber  => "memory",
                  Volatile => True);
+=======
+                 Outputs  =>
+                   (Unsigned_32'Asm_Output ("=r", C.FPSCR)),
+                 Inputs   =>
+                   (Address'Asm_Input ("r", C.V'Address)),
+                 Clobber  => "memory",
+                 Volatile => True);
+            C.V_Init := True;
+>>>>>>> upstream/18.0
          end if;
 
          if To /= null then
             Asm (Template => "vldm %1, {d0-d15}" & NL & "fmxr fpscr, %0",
                  Inputs   =>
+<<<<<<< HEAD
                    (Address'Asm_Input ("r", To.Context (FPSCR)),
                     Address'Asm_Input ("r", To.Context (S0)'Address)),
+=======
+                   (Unsigned_32'Asm_Input ("r", To.FPSCR),
+                    Address'Asm_Input ("r", To.V'Address)),
+>>>>>>> upstream/18.0
                  Clobber  => "memory",
                  Volatile => True);
          end if;
@@ -367,6 +551,7 @@ package body System.BB.CPU_Primitives is
       end if;
    end FPU_Context_Switch;
 
+<<<<<<< HEAD
    -----------------
    -- Get_Context --
    -----------------
@@ -413,6 +598,22 @@ package body System.BB.CPU_Primitives is
    begin
       Context (Index) := Address (Value);
    end Set_Context;
+=======
+   ----------------------
+   -- Initialize_Stack --
+   ----------------------
+
+   procedure Initialize_Stack
+     (Base          : Address;
+      Size          : Storage_Elements.Storage_Offset;
+      Stack_Pointer : out Address)
+   is
+      use System.Storage_Elements;
+   begin
+      --  Force alignment
+      Stack_Pointer := Base + (Size - (Size mod Stack_Alignment));
+   end Initialize_Stack;
+>>>>>>> upstream/18.0
 
    ------------------------
    -- Initialize_Context --
@@ -424,9 +625,15 @@ package body System.BB.CPU_Primitives is
       Argument        : System.Address;
       Stack_Pointer   : System.Address)
    is
+<<<<<<< HEAD
       User_CPSR   : Word;
       Mask_CPSR   : constant Word := 16#07f0_ffe0#;
       System_Mode : constant Word := 2#11111#; -- #31
+=======
+      User_CPSR   : Unsigned_32;
+      Mask_CPSR   : constant Unsigned_32 := 16#07f0_ffe0#;
+      System_Mode : constant Unsigned_32 := 2#11111#; -- #31
+>>>>>>> upstream/18.0
 
    begin
       --  Use a read-modify-write strategy for computing the CPSR for the new
@@ -434,16 +641,32 @@ package body System.BB.CPU_Primitives is
       --  bits, then add in the new mode.
 
       Asm ("mrs %0, CPSR",
+<<<<<<< HEAD
            Outputs  => Word'Asm_Output ("=r", User_CPSR),
+=======
+           Outputs  => Unsigned_32'Asm_Output ("=r", User_CPSR),
+>>>>>>> upstream/18.0
            Volatile => True);
       User_CPSR := (User_CPSR and Mask_CPSR) + System_Mode;
 
       Buffer.all :=
+<<<<<<< HEAD
         (R0     => Argument,
          PC     => Program_Counter,
          CPSR   => Address (User_CPSR),
          SP     => Stack_Pointer,
          others => 0);
+=======
+        (R0     => Unsigned_32 (Argument),
+         PC     => Unsigned_32 (Program_Counter),
+         CPSR   => User_CPSR,
+         SP     => Unsigned_32 (Stack_Pointer),
+         VFPU   => (V_Init => False,
+                    FPSCR  => Default_FPSCR,
+                    V      => (others => 0)),
+         others => <>);
+      Buffer.Running := Buffer.VFPU'Access;
+>>>>>>> upstream/18.0
    end Initialize_Context;
 
    ----------------------------
@@ -451,6 +674,7 @@ package body System.BB.CPU_Primitives is
    ----------------------------
 
    procedure Install_Error_Handlers is
+<<<<<<< HEAD
       EH : constant Address := GNAT_Error_Handler'Address;
 
    begin
@@ -483,15 +707,28 @@ package body System.BB.CPU_Primitives is
       Trap_Handlers (Vector) := To_Pointer (Service_Routine);
    end Install_Trap_Handler;
 
+=======
+   begin
+      null;
+   end Install_Error_Handlers;
+
+>>>>>>> upstream/18.0
    --------------------
    -- Is_FPU_Enabled --
    --------------------
 
    function Is_FPU_Enabled return Boolean is
+<<<<<<< HEAD
       R : Word;
    begin
       Asm ("fmrx   %0, fpexc",
            Outputs  => Word'Asm_Output ("=r", R),
+=======
+      R : Unsigned_32;
+   begin
+      Asm ("fmrx   %0, fpexc",
+           Outputs  => Unsigned_32'Asm_Output ("=r", R),
+>>>>>>> upstream/18.0
            Volatile => True);
       return (R and 16#4000_0000#) /= 0;
    end Is_FPU_Enabled;
@@ -513,7 +750,11 @@ package body System.BB.CPU_Primitives is
    begin
       Board_Support.Interrupts.Set_Current_Priority (Level);
 
+<<<<<<< HEAD
       if Level < System.Interrupt_Priority'First then
+=======
+      if Level < System.BB.Parameters.Interrupt_Unmask_Priority then
+>>>>>>> upstream/18.0
          Asm ("cpsie i", Volatile => True);
       end if;
    end Enable_Interrupts;
@@ -522,8 +763,24 @@ package body System.BB.CPU_Primitives is
    -- Initialize_CPU --
    --------------------
 
+<<<<<<< HEAD
    procedure Initialize_CPU is
    begin
+=======
+   procedure Initialize_CPU
+   is
+      CPU_Id : constant System.Multiprocessors.CPU_Range :=
+                 Board_Support.Multiprocessors.Current_CPU;
+   begin
+      if CPU_Id = 1 then
+         --  Retrieve the value of the FPSCR register: will be used as default
+         --  initialisation values for FPU contexts
+         Asm ("fmrx %0, fpscr",
+              Outputs  => Unsigned_32'Asm_Output ("=r", Default_FPSCR),
+              Volatile => True);
+      end if;
+
+>>>>>>> upstream/18.0
       --  We start with not allowing floating point. This way there never will
       --  be overhead saving unused floating point registers, We'll also be
       --  able to tell if floating point instructions were ever used.
@@ -538,7 +795,11 @@ package body System.BB.CPU_Primitives is
    procedure Set_FPU_Enabled (Enabled : Boolean) is
    begin
       Asm ("fmxr   fpexc, %0",
+<<<<<<< HEAD
            Inputs    => Word'Asm_Input
+=======
+           Inputs    => Unsigned_32'Asm_Input
+>>>>>>> upstream/18.0
                           ("r", (if Enabled then 16#4000_0000# else 0)),
            Volatile  => True);
       pragma Assert (Is_FPU_Enabled = Enabled);

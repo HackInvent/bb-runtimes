@@ -8,7 +8,11 @@
 --                                                                          --
 --        Copyright (C) 1999-2002 Universidad Politecnica de Madrid         --
 --             Copyright (C) 2003-2005 The European Space Agency            --
+<<<<<<< HEAD
 --                     Copyright (C) 2003-2016, AdaCore                     --
+=======
+--                     Copyright (C) 2003-2017, AdaCore                     --
+>>>>>>> upstream/18.0
 --                                                                          --
 -- GNARL is free software; you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -74,6 +78,14 @@ package System.BB.Parameters is
    --    5   (at 16#0014#) IRQ Trap (asynchronous)
    --    6   (at 16#0018#) FIQ Trap (asynchronous)
 
+<<<<<<< HEAD
+=======
+   Interrupt_Unmask_Priority : constant System.Interrupt_Priority :=
+                                 System.Interrupt_Priority'Last;
+   --  The priority under which we unmask interrupts.
+   --  Useful when we use FIQ to simulate priorities on ARM.
+
+>>>>>>> upstream/18.0
    ------------------------
    -- Context Management --
    ------------------------
