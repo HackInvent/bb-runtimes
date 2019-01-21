@@ -8,3 +8,4 @@ gnatinspect.db
 b__*.ad[bs]
 .#*
 obj
+install
