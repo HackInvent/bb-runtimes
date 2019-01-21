@@ -1,9 +1,9 @@
 # BSP support for Cortex-A/R
-from support.bsp import BSP
-from support.target import DFBBTarget
+from support.bsp_sources.archsupport import ArchSupport
+from support.bsp_sources.target import DFBBTarget
 
 
-class CortexARArch(BSP):
+class CortexARArch(ArchSupport):
     @property
     def name(self):
         return "cortex-ar"
@@ -34,10 +34,6 @@ class CortexARTarget(DFBBTarget):
     @property
     def has_timer_64(self):
         return True
-
-    @property
-    def zfp_system_ads(self):
-        return 'system-xi-arm.ads'
 
     def amend_rts(self, rts_profile, conf):
         super(CortexARTarget, self).amend_rts(rts_profile, conf)
@@ -74,17 +70,13 @@ class Rpi2Base(CortexARTarget):
         return 'arm/rpi2/README'
 
     @property
-    def sfp_system_ads(self):
-        return 'system-xi-arm-sfp.ads'
-
-    @property
-    def full_system_ads(self):
-        return 'system-xi-arm-full.ads'
+    def system_ads(self):
+        return {'zfp': 'system-xi-arm.ads',
+                'ravenscar-sfp': 'system-xi-arm-sfp.ads',
+                'ravenscar-full': 'system-xi-arm-full.ads'}
 
     def __init__(self):
-        super(Rpi2Base, self).__init__(
-            mem_routines=True,
-            small_mem=False)
+        super(Rpi2Base, self).__init__()
 
         self.add_linker_script('arm/rpi2/ram.ld', loader='RAM')
         self.add_sources('crt0', [
@@ -115,7 +107,7 @@ class Rpi2(Rpi2Base):
 
         self.add_sources('crt0', [
             'arm/rpi2/start-ram.S',
-            'arm/rpi2/memmap.s',
+            'arm/rpi2/memmap.S',
             'src/s-textio__rpi2-mini.adb'])
         self.add_sources('gnarl', [
             'src/s-bbpara__rpi2.ads'])
@@ -131,7 +123,7 @@ class Rpi2Mc(Rpi2Base):
 
         self.add_sources('crt0', [
             'arm/rpi2-mc/start-ram.S',
-            'arm/rpi2-mc/memmap.s',
+            'arm/rpi2-mc/memmap.S',
             'src/s-textio__rpi2-pl011.adb'])
         self.add_sources('gnarl', [
             'src/s-bbpara__rpi2.ads'])
@@ -144,7 +136,7 @@ class TMS570(CortexARTarget):
         if self.variant == 'tms570ls31':
             base = 'tms570'
         else:
-            base = 'a6mc'
+            base = 'tms570lc'
 
         if self.uart_io:
             return "%s_sci" % base
@@ -152,8 +144,12 @@ class TMS570(CortexARTarget):
             return base
 
     @property
+    def has_small_memory(self):
+        return True
+
+    @property
     def loaders(self):
-        return ('LORAM', 'FLASH', 'HIRAM', 'LORAM_16M', 'BOOT', 'USER')
+        return ('LORAM', 'FLASH', 'HIRAM', 'USER')
 
     @property
     def cpu(self):
@@ -174,11 +170,11 @@ class TMS570(CortexARTarget):
 
     @property
     def system_ads(self):
-        return {'zfp': self.zfp_system_ads,
+        return {'zfp': 'system-xi-arm.ads',
                 'ravenscar-sfp': 'system-xi-arm-sfp.ads',
-                'ravenscar-esfp': 'system-xi-arm-sfp.ads',
                 'ravenscar-full': 'system-xi-arm-full.ads'}
 
+<<<<<<< HEAD
     def amend_rts(self, rts_profile, cfg):
         if rts_profile == 'ravenscar-esfp':
             super(TMS570, self).amend_rts('ravenscar-sfp', cfg)
@@ -200,12 +196,12 @@ class TMS570(CortexARTarget):
         else:
             super(TMS570, self).amend_rts(rts_profile, cfg)
 
+=======
+>>>>>>> community-2018
     def __init__(self, variant='tms570ls31', uart_io=False):
         self.variant = variant
         self.uart_io = uart_io
-        super(TMS570, self).__init__(
-            mem_routines=True,
-            small_mem=True)
+        super(TMS570, self).__init__()
 
         self.add_linker_script([
             'arm/tms570/common.ld',
@@ -213,11 +209,7 @@ class TMS570(CortexARTarget):
         self.add_linker_script('arm/tms570/flash.ld', loader='FLASH')
         self.add_linker_script('arm/tms570/hiram.ld', loader='HIRAM')
         self.add_linker_script('arm/tms570/loram.ld', loader='LORAM')
-        self.add_linker_script('arm/tms570/loram_16m.ld', loader='LORAM_16M')
-        self.add_linker_script('arm/tms570/boot.ld', loader='BOOT')
-        self.add_linker_switch('-Wl,-z,max-page-size=0x1000',
-                               loader=['FLASH', 'HIRAM', 'LORAM',
-                                       'LORAM_16M', 'BOOT'])
+        self.add_linker_switch('-Wl,-z,max-page-size=0x1000', loader=None)
 
         self.add_sources('crt0', [
             'arm/tms570/crt0.S',
@@ -282,21 +274,17 @@ class Zynq7000(CortexARTarget):
         return 'arm/zynq/README'
 
     @property
-    def sfp_system_ads(self):
-        return 'system-xi-arm-gic-sfp.ads'
-
-    @property
-    def full_system_ads(self):
-        return 'system-xi-arm-gic-full.ads'
+    def system_ads(self):
+        return {'zfp': 'system-xi-arm.ads',
+                'ravenscar-sfp': 'system-xi-arm-gic-sfp.ads',
+                'ravenscar-full': 'system-xi-arm-gic-full.ads'}
 
     def __init__(self):
-        super(Zynq7000, self).__init__(
-            mem_routines=True,
-            small_mem=False)
+        super(Zynq7000, self).__init__()
         self.add_linker_script('arm/zynq/ram.ld', loader='RAM')
         self.add_sources('crt0', [
             'arm/zynq/start-ram.S',
-            'arm/zynq/memmap.inc',
+            'arm/zynq/memmap.S',
             'src/s-textio__zynq.adb',
             'src/s-macres__zynq.adb'])
         self.add_sources('gnarl', [

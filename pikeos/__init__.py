@@ -1,17 +1,28 @@
 # BSP support for PowerPC/e500v2
-from support.bsp import BSP
-from support.target import Target
-
 from support import readfile
+from support.bsp_sources.target import Target
 
 
-class PikeOSBSP(BSP):
+class PikeOS(Target):
     @property
-    def name(self):
-        return 'pikeos'
+    def has_double_precision_fpu(self):
+        return True
+
+    @property
+    def pikeos_version(self):
+        raise Exception("not implemented")
+
+    @property
+    def pikeos_target(self):
+        raise Exception("not implemented")
+
+    def has_libc(self, profile):
+        # PikeOS is considered Bare Metal, and we don't provide newlib on
+        # this target
+        return False
 
     def __init__(self):
-        super(PikeOSBSP, self).__init__()
+        super(PikeOS, self).__init__()
         self.add_linker_script('pikeos/memory.ld')
         self.add_sources('arch', [
             'pikeos/pikeos-cert-app.c',
@@ -21,129 +32,54 @@ class PikeOSBSP(BSP):
             'pikeos/adaint-pikeos.c',
             'src/a-intnam__dummy.ads'])
 
+    def dump_runtime_xml(self, rts_name, rts):
+        cnt = readfile('pikeos/runtime.xml')
+        if self.pikeos_version == 'pikeos3':
+            cnt = cnt.replace('@version@', 'pikeos-3.4')
+        else:
+            cnt = cnt.replace('@version@', 'pikeos-4.1')
+        cnt = cnt.replace('@target@', self.pikeos_target)
 
-class PikeOS(Target):
-    @property
-    def parent(self):
-        return PikeOSBSP
-
-    def __init__(self):
-        super(PikeOS, self).__init__(
-            mem_routines=True,
-            small_mem=False)
+        return cnt
 
     def amend_rts(self, rts_profile, conf):
         super(PikeOS, self).amend_rts(rts_profile, conf)
-        conf.rts_xml = readfile('pikeos/runtime.xml')
         if rts_profile == 'ravenscar-full':
             # Register ZCX frames (for pikeos-cert-app.c)
             conf.build_flags['c_flags'] += ['-DUSE_ZCX']
+        if self.pikeos_version == 'pikeos3':
+            # Don't use function/data sections, not supported by linker script
+            conf.build_flags['common_flags'] = \
+                filter(lambda x: x not in ['-ffunction-sections',
+                                           '-fdata-sections'],
+                       self.build_flags['common_flags'])
 
 
-class PikeOS3(PikeOS):
+class ArmPikeOS(PikeOS):
     @property
-    def pikeos_version(selfs):
-        return 'pikeos3'
+    def name(self):
+        return 'arm-pikeos'
 
-    def amend_rts(self, rts_profile, conf):
-        super(PikeOS3, self).amend_rts(rts_profile, conf)
-        # Don't use function/data sections, not supported by linker script
-        conf.build_flags['common_flags'] = \
-            filter(lambda x: x not in ['-ffunction-sections',
-                                       '-fdata-sections'],
-                   self.build_flags['common_flags'])
-        conf.rts_xml = conf.rts_xml.replace(
-            '@version@', 'pikeos-3.4')
-
-
-class PikeOS4(PikeOS):
     @property
-    def pikeos_version(selfs):
+    def target(self):
+        return 'arm-sysgo-pikeos'
+
+    @property
+    def pikeos_version(self):
         return 'pikeos4'
 
-    def amend_rts(self, rts_profile, conf):
-        super(PikeOS4, self).amend_rts(rts_profile, conf)
-        conf.rts_xml = conf.rts_xml.replace(
-            '@version@', 'pikeos-4.1')
-
-
-class ArmPikeOS(PikeOS4):
     @property
-    def name(self):
-        return 'arm-pikeos'
+    def pikeos_target(self):
+        return 'arm/v7hf'
 
     @property
-    def target(self):
-        return 'arm-pikeos'
+    def system_ads(self):
+        return {
+            'zfp': 'system-pikeos-arm.ads',
+            'ravenscar-sfp': 'system-pikeos-arm-ravenscar-sfp.ads',
+            'ravenscar-full': 'system-pikeos-arm-ravenscar-full.ads'
+        }
 
-    @property
-    def zfp_system_ads(self):
-        return 'system-pikeos-arm.ads'
-
-    @property
-    def sfp_system_ads(self):
-        return 'system-pikeos-arm-ravenscar-sfp.ads'
-
-    @property
-    def full_system_ads(self):
-        return 'system-pikeos-arm-ravenscar-full.ads'
-
-    def amend_rts(self, rts_profile, conf):
-        super(ArmPikeOS, self).amend_rts(rts_profile, conf)
-        conf.rts_xml = conf.rts_xml.replace(
-            '@target@', 'arm/v7hf')
-
-
-class PpcPikeOS(PikeOS3):
-    @property
-    def name(self):
-        return 'ppc-pikeos'
-
-    @property
-    def target(self):
-        return 'ppc-pikeos'
-
-    @property
-    def zfp_system_ads(self):
-        return 'system-pikeos-ppc.ads'
-
-    @property
-    def sfp_system_ads(self):
-        return 'system-pikeos-ppc-ravenscar-sfp.ads'
-
-    @property
-    def full_system_ads(self):
-        return 'system-pikeos-ppc-ravenscar-full.ads'
-
-    def amend_rts(self, rts_profile, conf):
-        super(PpcPikeOS, self).amend_rts(rts_profile, conf)
-        conf.rts_xml = conf.rts_xml.replace(
-            '/include")', '/include", "-DPPC_OEA")').replace(
-            '@target@', 'ppc/oea')
-
-
-class X86PikeOS(PikeOS3):
-    @property
-    def name(self):
-        return 'x86-pikeos'
-
-    @property
-    def target(self):
-        return 'x86-pikeos'
-
-    @property
-    def zfp_system_ads(self):
-        return 'system-pikeos-x86.ads'
-
-    @property
-    def sfp_system_ads(self):
-        return 'system-pikeos-x86-ravenscar-sfp.ads'
-
-    @property
-    def full_system_ads(self):
-        return 'system-pikeos-x86-ravenscar-full.ads'
-
-    def amend_rts(self, rts_profile, conf):
-        super(X86PikeOS, self).amend_rts(rts_profile, conf)
-        conf.rts_xml = conf.rts_xml.replace(
-            '@target@', 'x86/i586')
+    def __init__(self):
+        super(ArmPikeOS, self).__init__()
+        self.add_linker_script('pikeos/arm-app.ld')

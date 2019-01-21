@@ -1,9 +1,9 @@
 # This module contains cortex-m bsp support
-from support.bsp import BSP
-from support.target import Target
+from support.bsp_sources.archsupport import ArchSupport
+from support.bsp_sources.target import Target
 
 
-class CortexMArch(BSP):
+class CortexMArch(ArchSupport):
     @property
     def name(self):
         return "cortex-m"
@@ -14,15 +14,31 @@ class CortexMArch(BSP):
             'src/s-macres__cortexm3.adb',
             'arm/src/breakpoint_handler-cortexm.S'])
         self.add_sources('gnarl', [
-            'src/s-bbbosu__armv7m.adb',
             'src/s-bbcpsp__cortexm.ads',
             'src/s-bbcppr__old.ads',
             'src/s-bbcppr__armv7m.adb',
             'src/s-bbinte__generic.adb',
-            'src/s-bbsumu__generic.adb'])
+            'src/s-bbsumu__generic.adb',
+            'src/s-bcpcst__armvXm.ads'])
 
 
-class CortexMTarget(Target):
+class ArmV7MArch(ArchSupport):
+    @property
+    def name(self):
+        return "armv7-m"
+
+    @property
+    def parent(self):
+        return CortexMArch
+
+    def __init__(self):
+        super(ArmV7MArch, self).__init__()
+        self.add_sources('gnarl', [
+            'src/s-bbbosu__armv7m.adb',
+            'src/s-bcpcst__pendsv.adb'])
+
+
+class ArmV6MTarget(Target):
     @property
     def target(self):
         return "arm-eabi"
@@ -37,31 +53,40 @@ class CortexMTarget(Target):
 
     @property
     def has_single_precision_fpu(self):
-        return True
+        return False
 
     @property
     def has_double_precision_fpu(self):
         return False
 
     @property
-    def zfp_system_ads(self):
-        return 'system-xi-arm.ads'
-
-    @property
-    def sfp_system_ads(self):
-        return 'system-xi-cortexm4-sfp.ads'
-
-    @property
-    def full_system_ads(self):
-        return 'system-xi-cortexm4-full.ads'
+    def has_small_memory(self):
+        return True
 
     def __init__(self):
-        super(CortexMTarget, self).__init__(
-            mem_routines=True,
-            small_mem=True)
+        super(ArmV6MTarget, self).__init__()
 
 
-class LM3S(CortexMTarget):
+class ArmV7MTarget(ArmV6MTarget):
+    @property
+    def parent(self):
+        return ArmV7MArch
+
+    @property
+    def has_single_precision_fpu(self):
+        return True
+
+    @property
+    def system_ads(self):
+        return {'zfp': 'system-xi-arm.ads',
+                'ravenscar-sfp': 'system-xi-cortexm4-sfp.ads',
+                'ravenscar-full': 'system-xi-cortexm4-full.ads'}
+
+    def __init__(self):
+        super(ArmV7MTarget, self).__init__()
+
+
+class LM3S(ArmV7MTarget):
     @property
     def name(self):
         return 'lm3s'
@@ -90,12 +115,10 @@ class LM3S(CortexMTarget):
         return 'arm/lm3s/README'
 
     @property
-    def sfp_system_ads(self):
-        return None
-
-    @property
-    def full_system_ads(self):
-        return None
+    def system_ads(self):
+        # Only zfp supported here
+        ret = super(LM3S, self).system_ads
+        return {'zfp': ret['zfp']}
 
     def __init__(self):
         super(LM3S, self).__init__()
@@ -110,21 +133,21 @@ class LM3S(CortexMTarget):
             'src/s-textio__lm3s.adb'])
 
 
-class SamCommonBSP(BSP):
+class SamCommonArchSupport(ArchSupport):
     @property
     def name(self):
         return 'sam'
 
     @property
     def parent(self):
-        return CortexMArch
+        return ArmV7MArch
 
     @property
     def loaders(self):
         return ('ROM', 'SAMBA', 'USER')
 
     def __init__(self):
-        super(SamCommonBSP, self).__init__()
+        super(SamCommonArchSupport, self).__init__()
 
         self.add_linker_script('arm/sam/common-SAMBA.ld', loader='SAMBA')
         self.add_linker_script('arm/sam/common-ROM.ld', loader='ROM')
@@ -142,14 +165,14 @@ class SamCommonBSP(BSP):
             'src/s-bbpara__sam4s.ads'])
 
 
-class Sam(CortexMTarget):
+class Sam(ArmV7MTarget):
     @property
     def name(self):
         return self.board
 
     @property
     def parent(self):
-        return SamCommonBSP
+        return SamCommonArchSupport
 
     @property
     def has_single_precision_fpu(self):
@@ -159,9 +182,11 @@ class Sam(CortexMTarget):
             return True
 
     @property
-    def full_system_ads(self):
+    def system_ads(self):
         # No runtime full
-        return None
+        ret = super(Sam, self).system_ads
+        return {'zfp': ret['zfp'],
+                'ravenscar-sfp': ret['ravenscar-sfp']}
 
     @property
     def compiler_switches(self):
@@ -198,7 +223,7 @@ class Sam(CortexMTarget):
             'arm/sam/%s/svd/a-intnam.ads' % self.name])
 
 
-class SmartFusion2(CortexMTarget):
+class SmartFusion2(ArmV7MTarget):
     @property
     def name(self):
         return 'smartfusion2'
@@ -223,14 +248,10 @@ class SmartFusion2(CortexMTarget):
         return True
 
     @property
-    def zfp_system_ads(self):
-        # no zfp rts
-        return None
-
-    @property
-    def full_system_ads(self):
-        # no ravenscar-full rts
-        return None
+    def system_ads(self):
+        # no zfp nor ravenscar-full rts
+        ret = super(SmartFusion2, self).system_ads
+        return {'ravenscar-sfp': ret['ravenscar-sfp']}
 
     def __init__(self):
         super(SmartFusion2, self).__init__()
@@ -259,7 +280,122 @@ class SmartFusion2(CortexMTarget):
             'src/s-bbpara__smartfusion2.ads'])
 
 
-class Stm32CommonBSP(BSP):
+class M1AGL(ArmV6MTarget):
+    @property
+    def name(self):
+        return 'm1agl'
+
+    @property
+    def loaders(self):
+        return (['ROM', 'RAM'])
+
+    @property
+    def compiler_switches(self):
+        # The required compiler switches
+        return ('-mlittle-endian', '-mthumb', '-msoft-float',
+                '-mcpu=cortex-m1')
+
+    @property
+    def system_ads(self):
+        return {'zfp': 'system-xi-arm.ads',
+                'ravenscar-sfp': 'system-xi-m1agl-sfp.ads'}
+
+    def __init__(self):
+        super(M1AGL, self).__init__()
+
+        self.add_linker_script('arm/igloo/m1agl/common-ROM.ld', loader='ROM')
+        self.add_linker_script('arm/igloo/m1agl/common-RAM.ld', loader='RAM')
+        self.add_linker_script('arm/igloo/m1agl/memory-map.ld',
+                               loader=['ROM', 'RAM'])
+
+        self.add_sources('crt0', [
+            'arm/igloo/m1agl/start-rom.S',
+            'arm/igloo/m1agl/start-ram.S',
+            'arm/igloo/m1agl/s-bbbopa.ads',
+            'arm/igloo/m1agl/s-bbmcpa.ads',
+            'arm/igloo/m1agl/s-textio.adb',
+            'arm/src/armv6m_irq_trap_without_os_extensions.S'])
+
+        self.add_sources('gnarl', [
+            'arm/igloo/m1agl/a-intnam.ads',
+            'arm/igloo/m1agl/svd/i-m1agl.ads',
+            'arm/igloo/m1agl/svd/i-m1agl-coretimer.ads',
+            'arm/igloo/m1agl/svd/i-m1agl-coreinterrupt.ads',
+            'arm/igloo/m1agl/svd/i-m1agl-coreuartapb.ads',
+            'src/s-bbpara__m1agl.ads',
+            'src/s-bbbosu__m1agl.adb',
+            'src/s-bcpcst__m1agl.adb'])
+
+
+class NRF51(ArmV6MTarget):
+    @property
+    def name(self):
+        return 'nRF51'
+
+    @property
+    def loaders(self):
+        return (['ROM'])
+
+    @property
+    def has_fpu(self):
+        return True
+
+    @property
+    def compiler_switches(self):
+        # The required compiler switches
+        return ('-mlittle-endian', '-mthumb', '-msoft-float',
+                '-mcpu=cortex-m0')
+
+    @property
+    def system_ads(self):
+        return {'zfp': 'system-xi-arm.ads',
+                'ravenscar-sfp': 'system-xi-armv6m-sfp.ads',
+                'ravenscar-full': 'system-xi-armv6m-full.ads'}
+
+    def __init__(self):
+        super(NRF51, self).__init__()
+
+        self.add_linker_script('arm/nordic/nrf51/common-ROM.ld', loader='ROM')
+
+        self.add_sources('crt0', [
+            'src/s-bbarat.ads',
+            'src/s-bbarat.adb',
+            'arm/nordic/nrf51/svd/i-nrf51.ads',
+            'arm/nordic/nrf51/svd/i-nrf51-clock.ads',
+            'arm/nordic/nrf51/svd/i-nrf51-rtc.ads',
+            'arm/nordic/nrf51/svd/i-nrf51-uart.ads',
+            'arm/nordic/nrf51/svd/handler.S',
+            'arm/nordic/nrf51/start-rom.S',
+            'arm/nordic/nrf51/s-bbmcpa.ads'])
+
+        self.add_sources('gnarl', [
+            'arm/nordic/nrf51/svd/a-intnam.ads',
+            'src/s-bbpara__nrf51.ads',
+            'src/s-bbbosu__nrf51.adb',
+            'src/s-bcpcst__pendsv.adb'])
+
+
+class Microbit(NRF51):
+    @property
+    def name(self):
+        return 'microbit'
+
+    @property
+    def use_semihosting_io(self):
+        return False
+
+    def __init__(self):
+        super(Microbit, self).__init__()
+
+        self.add_linker_script('arm/nordic/nrf51/memory-map_nRF51822xxAA.ld',
+                               loader='ROM')
+
+        self.add_sources('crt0',
+                         ['arm/nordic/nrf51/s-bbbopa__microbit.ads',
+                          'src/s-textio__microbit.adb'])
+
+
+class Stm32CommonArchSupport(ArchSupport):
     """Holds sources common to all stm32 boards"""
     @property
     def name(self):
@@ -267,7 +403,7 @@ class Stm32CommonBSP(BSP):
 
     @property
     def parent(self):
-        return CortexMArch
+        return ArmV7MArch
 
     @property
     def loaders(self):
@@ -278,7 +414,7 @@ class Stm32CommonBSP(BSP):
         return 'arm/stm32/README'
 
     def __init__(self):
-        super(Stm32CommonBSP, self).__init__()
+        super(Stm32CommonArchSupport, self).__init__()
 
 <<<<<<< HEAD
 =======
@@ -296,7 +432,7 @@ class Stm32CommonBSP(BSP):
 
 >>>>>>> upstream/18.0
 
-class Stm32(CortexMTarget):
+class Stm32(ArmV7MTarget):
     """Generic handling of stm32 boards"""
     @property
     def name(self):
@@ -304,7 +440,7 @@ class Stm32(CortexMTarget):
 
     @property
     def parent(self):
-        return Stm32CommonBSP
+        return Stm32CommonArchSupport
 
     @property
     def use_semihosting_io(self):
@@ -354,6 +490,8 @@ class Stm32(CortexMTarget):
         elif self.board == 'stm32f469disco':
             self.mcu = 'stm32f469x'
         elif self.board == 'stm32f746disco':
+            self.mcu = 'stm32f7x'
+        elif self.board == 'stm32756geval':
             self.mcu = 'stm32f7x'
         elif self.board == 'stm32f769disco':
             self.mcu = 'stm32f7x9'
@@ -436,6 +574,12 @@ class Stm32(CortexMTarget):
         elif self.board == 'stm32f746disco':
             self.add_sources('crt0', [
                 'arm/stm32/stm32f7x/s-stm32.adb'])
+        elif self.board == 'stm32756geval':
+            self.add_sources('crt0', [
+                'arm/stm32/stm32f7x/s-stm32.adb'])
+            self.update_pair(
+                's-bbbopa.ads',
+                'arm/stm32/%s/s-bbbopa-stm32756geval.ads' % self.mcu)
         elif self.board == 'stm32f769disco':
             self.add_sources('crt0', [
                 'arm/stm32/stm32f7x/s-stm32.adb'])
@@ -445,3 +589,159 @@ class Stm32(CortexMTarget):
         self.add_sources('gnarl', [
             'arm/stm32/%s/svd/handler.S' % self.mcu,
             'arm/stm32/%s/svd/a-intnam.ads' % self.mcu])
+
+
+class CortexM0(ArmV6MTarget):
+    @property
+    def name(self):
+        return 'cortex-m0'
+
+    @property
+    def has_fpu(self):
+        return True
+
+    @property
+    def use_semihosting_io(self):
+        return True
+
+    @property
+    def compiler_switches(self):
+        # The required compiler switches
+        return ('-mlittle-endian', '-mthumb', '-msoft-float',
+                '-mcpu=cortex-m0')
+
+    @property
+    def system_ads(self):
+        return {'zfp': 'system-xi-arm.ads'}
+
+
+class CortexM0P(CortexM0):
+    @property
+    def name(self):
+        return 'cortex-m0p'
+
+    @property
+    def compiler_switches(self):
+        # The required compiler switches
+        return ('-mlittle-endian', '-mthumb', '-msoft-float',
+                '-mcpu=cortex-m0plus')
+
+
+class CortexM1(ArmV6MTarget):
+    @property
+    def name(self):
+        return 'cortex-m1'
+
+    @property
+    def has_fpu(self):
+        return True
+
+    @property
+    def use_semihosting_io(self):
+        return True
+
+    @property
+    def compiler_switches(self):
+        # The required compiler switches
+        return ('-mlittle-endian', '-mthumb', '-msoft-float',
+                '-mcpu=cortex-m1')
+
+    @property
+    def system_ads(self):
+        return {'zfp': 'system-xi-arm.ads'}
+
+
+class CortexM3(ArmV7MTarget):
+    @property
+    def name(self):
+        return 'cortex-m3'
+
+    @property
+    def has_fpu(self):
+        return True
+
+    @property
+    def use_semihosting_io(self):
+        return True
+
+    @property
+    def compiler_switches(self):
+        # The required compiler switches
+        return ('-mlittle-endian', '-mthumb', '-msoft-float',
+                '-mcpu=cortex-m3')
+
+    @property
+    def system_ads(self):
+        return {'zfp': 'system-xi-arm.ads'}
+
+
+class CortexM4(ArmV7MTarget):
+    @property
+    def name(self):
+        return 'cortex-m4'
+
+    @property
+    def has_fpu(self):
+        return True
+
+    @property
+    def use_semihosting_io(self):
+        return True
+
+    @property
+    def compiler_switches(self):
+        # The required compiler switches
+        return ('-mlittle-endian', '-mthumb', '-msoft-float',
+                '-mcpu=cortex-m4')
+
+    @property
+    def system_ads(self):
+        return {'zfp': 'system-xi-arm.ads'}
+
+
+class CortexM4F(CortexM4):
+    @property
+    def name(self):
+        return 'cortex-m4f'
+
+    @property
+    def compiler_switches(self):
+        # The required compiler switches
+        return ('-mlittle-endian', '-mthumb', '-mhard-float',
+                '-mcpu=cortex-m4', '-mfpu=fpv4-sp-d16')
+
+
+class CortexM7F(ArmV7MTarget):
+    @property
+    def name(self):
+        return 'cortex-m7f'
+
+    @property
+    def has_fpu(self):
+        return True
+
+    @property
+    def use_semihosting_io(self):
+        return True
+
+    @property
+    def compiler_switches(self):
+        # The required compiler switches
+        return ('-mlittle-endian', '-mthumb', '-mhard-float',
+                '-mcpu=cortex-m7', '-mfpu=fpv5-sp-d16')
+
+    @property
+    def system_ads(self):
+        return {'zfp': 'system-xi-arm.ads'}
+
+
+class CortexM7DF(CortexM7F):
+    @property
+    def name(self):
+        return 'cortex-m7df'
+
+    @property
+    def compiler_switches(self):
+        # The required compiler switches
+        return ('-mlittle-endian', '-mthumb', '-mhard-float',
+                '-mcpu=cortex-m7', '-mfpu=fpv5-d16')

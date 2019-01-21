@@ -5,14 +5,15 @@ OUTPUT_ARCH(powerpc:common)
 ENTRY(_start_ram)
 _DEFAULT_STACK_SIZE = 64 * 1024;
 
+MEMORY
+{
+  /* To be adjusted: this corresponds to the P2020 RDB */
+  /* Start at 32 MB to leave room for the bootloader */
+  sdram (RWXA) : ORIGIN = 0x02000000, LENGTH = 1024M - 32M
+}
+
 SECTIONS
 {
-  /* Read-only sections, merged into text segment: */
-  /* Start at 32 MB.  */
-  . = 0x02000000;
-
-  . = ALIGN (1024);
-
   .text           :
   {
     __text = .;
@@ -25,7 +26,7 @@ SECTIONS
     /* .gnu.warning sections are handled specially by elf32.em.  */
     *(.gnu.warning)
     *(.glink)
-  } =0
+  } = 0
   .init           :
   {
     KEEP (*(.init))
@@ -35,7 +36,7 @@ SECTIONS
     KEEP (*(.fini))
   } =0
   .ctors : { KEEP(SORT_BY_NAME(*)(.ctors)) }
-  .dtors : { KEEP(SORT_BY_NAME(*)(.dtors)) } 
+  .dtors : { KEEP(SORT_BY_NAME(*)(.dtors)) }
 
   .rodata         : { *(.rodata .rodata.* .gnu.linkonce.r.*) }
   .rodata1        : { *(.rodata1) }
@@ -116,14 +117,11 @@ SECTIONS
    *(COMMON)
    . = ALIGN(16);
    __bss_end = .;
-
-   __heap_start = .;
-   . = . + 0x100000;
-   . = ALIGN(16);
-   __heap_end = .;
-
    _end = .;
   }
+
+  __heap_start = _end;
+  __heap_end = ORIGIN(sdram) + LENGTH(sdram);
 
   .comment       0 : { *(.comment) }
 
@@ -152,4 +150,3 @@ SECTIONS
   .gnu.attributes 0 : { KEEP (*(.gnu.attributes)) }
   /DISCARD/ : { *(.note.GNU-stack) *(.gnu_debuglink) *(.gnu.lto_*) }
 }
-

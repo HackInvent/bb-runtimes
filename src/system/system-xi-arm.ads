@@ -8,10 +8,14 @@
 --                              (ARM Version)                               --
 --                                                                          --
 <<<<<<< HEAD
+<<<<<<< HEAD
 --          Copyright (C) 1992-2016, Free Software Foundation, Inc.         --
 =======
 --          Copyright (C) 1992-2017, Free Software Foundation, Inc.         --
 >>>>>>> upstream/18.0
+=======
+--          Copyright (C) 1992-2018, Free Software Foundation, Inc.         --
+>>>>>>> community-2018
 --                                                                          --
 -- This specification is derived from the Ada Reference Manual for use with --
 -- GNAT. The copyright notice above, and the license provisions that follow --
@@ -87,7 +91,7 @@ package System is
    Max_Mantissa          : constant := 63;
    Fine_Delta            : constant := 2.0 ** (-Max_Mantissa);
 
-   Tick                  : constant := 1.0 / 60.0;
+   Tick                  : constant := 0.0;
 
    --  Storage-related Declarations
 

@@ -7,7 +7,7 @@
 --                                 S p e c                                  --
 --                          (PikeOS ARM Version)                            --
 --                                                                          --
---          Copyright (C) 2016-2017, Free Software Foundation, Inc.         --
+--          Copyright (C) 2016-2018, Free Software Foundation, Inc.         --
 --                                                                          --
 -- This specification is derived from the Ada Reference Manual for use with --
 -- GNAT. The copyright notice above, and the license provisions that follow --
@@ -85,7 +85,7 @@ package System is
    Max_Mantissa          : constant := 63;
    Fine_Delta            : constant := 2.0 ** (-Max_Mantissa);
 
-   Tick                  : constant := 0.000_000_001; --  1 ns
+   Tick                  : constant := 0.0;
 
    --  Storage-related Declarations
 
@@ -195,12 +195,12 @@ private
    --  used for native as well.
 
    pragma Linker_Options
-     ("-u__p4_start" & ASCII.NUL & "-e__p4_start" & ASCII.NUL &
-      "-u_p4_entry" & ASCII.NUL &
-      "-nostdlib" & ASCII.NUL &
-      "-T../scripts/app-ld-script" & ASCII.NUL &
-      "-T../ld/memory.ld" & ASCII.NUL &
-      "-lvm" & ASCII.NUL & "-lp4" & ASCII.NUL & "-lstand" & ASCII.NUL &
-      "-lgcc");
+      ("-u__p4_start" & ASCII.NUL & "-e__p4_start" & ASCII.NUL &
+       "-u_p4_entry" & ASCII.NUL &
+       "-nostdlib" & ASCII.NUL &
+       "-T../ld/arm-app.ld" & ASCII.NUL &
+       "-T../ld/memory.ld" & ASCII.NUL &
+       "-lvm" & ASCII.NUL & "-lp4" & ASCII.NUL & "-lstand" & ASCII.NUL &
+       "-lgcc");
 
 end System;

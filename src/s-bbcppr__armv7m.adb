@@ -62,10 +62,12 @@ package body System.BB.CPU_Primitives is
    use type SSE.Storage_Offset;
 =======
 with System.Machine_Code; use System.Machine_Code;
+with System.BB.CPU_Primitives.Context_Switch_Trigger;
 
 package body System.BB.CPU_Primitives is
    use Board_Support;
    use Board_Support.Time;
+   use System.BB.CPU_Primitives.Context_Switch_Trigger;
    use Parameters;
    use Threads.Queues;
 >>>>>>> upstream/18.0
@@ -73,8 +75,16 @@ package body System.BB.CPU_Primitives is
    NL : constant String := ASCII.LF & ASCII.HT;
    --  New line separator in Asm templates
 
-   No_Floating_Point : constant Boolean := not System.BB.Parameters.Has_FPU;
-   --  Set True iff the FPU should not be used
+   Has_VTOR : constant Boolean := System.BB.Parameters.Has_VTOR;
+   --  Set True iff the Vector Table Offset Register (VTOR) can be used
+   --  (armv7-m architecture or Cortex-M0+).
+
+   Has_OS_Extensions : constant Boolean :=
+     System.BB.Parameters.Has_OS_Extensions;
+   --  Set True iff the core implements the armv6-m OS extensions
+
+   Is_ARMv6m : constant Boolean := System.BB.Parameters.Is_ARMv6m;
+   --  Set True iff the core implements the armv6-m architecture
 
    -----------
    -- Traps --
@@ -120,12 +130,6 @@ package body System.BB.CPU_Primitives is
    procedure SV_Call_Handler;
    pragma Export (Asm, SV_Call_Handler, "__gnat_sv_call_trap");
 
-   procedure Pend_SV_Handler;
-   pragma Machine_Attribute (Pend_SV_Handler, "naked");
-   pragma Export (Asm, Pend_SV_Handler, "__gnat_pend_sv_trap");
-   --  This assembly routine needs to save and restore registers without
-   --  interference. The "naked" machine attribute communicates this to GCC.
-
    procedure Sys_Tick_Handler;
    pragma Export (Asm, Sys_Tick_Handler, "__gnat_sys_tick_trap");
 
@@ -139,7 +143,7 @@ package body System.BB.CPU_Primitives is
    -- Context Switching --
    -----------------------
 
-   --  This port uses the ARMv7-M hardware for saving volatile context for
+   --  This port uses the ARMv6/7-M hardware for saving volatile context for
    --  interrupts, see the Hardware_Context type below for details. Any
    --  non-volatile registers will be preserved by the interrupt handler in
    --  the same way as it happens for ordinary procedure calls.
@@ -156,10 +160,6 @@ package body System.BB.CPU_Primitives is
       R0, R1, R2, R3   : Word;
       R12, LR, PC, PSR : Word;
    end record;
-
-   ICSR : Word with Volatile, Address   => 16#E000_ED04#; -- Int. Control/State
-
-   ICSR_Pend_SV_Set : constant Word := 2**28;
 
    VTOR : Address with Volatile, Address => 16#E000_ED08#; -- Vec. Table Offset
 
@@ -196,25 +196,31 @@ package body System.BB.CPU_Primitives is
       --  Table containing a pointer to the top of the stack for each processor
 
    begin
-      --  Switch the stack pointer to SP_process (PSP)
 
-      Asm ("mrs r0, MSP" & NL &
-           "msr PSP, r0" & NL &
-           "mrs r0, CONTROL" & NL &
-           "orr r0,r0,2" & NL &
-           "msr CONTROL,r0",
-           Clobber => "r0",
-           Volatile => True);
+      if Has_OS_Extensions then
+         --  Switch the stack pointer to SP_process (PSP)
 
-      --  Initialize SP_main (MSP)
+         Asm ("mrs r0, MSP" & NL &
+                "msr PSP, r0" & NL &
+                "mrs r0, CONTROL" & NL &
+                "movs r1, #2" & NL &
+                "orr r0,r0,r1" & NL &
+                "msr CONTROL,r0" & NL &
+                "mrs r0, CONTROL",
+              Clobber => "r0,r1",
+              Volatile => True);
 
-      Asm ("msr MSP, %0",
-           Inputs => Address'Asm_Input ("r", Interrupt_Stack_Table (1)),
-           Volatile => True);
+         --  Initialize SP_main (MSP)
 
-      --  Initialize vector table
+         Asm ("msr MSP, %0",
+              Inputs => Address'Asm_Input ("r", Interrupt_Stack_Table (1)),
+              Volatile => True);
+      end if;
 
-      VTOR := System_Vectors'Address;
+      if Has_VTOR then
+         --  Initialize vector table
+         VTOR := System_Vectors'Address;
+      end if;
 
       --  Set configuration: stack is 8 byte aligned, trap on divide by 0,
       --  no trap on unaligned access, can enter thread mode from any level.
@@ -232,19 +238,26 @@ package body System.BB.CPU_Primitives is
       SHPR2 := 0;
       SHPR3 := 16#00_FF_00_00#;
 
-      --  Write the required key (16#05FA#) and desired PRIGROUP value. We
-      --  configure this to 3, to have 16 group priorities
+      if not Is_ARMv6m then
 
-      AIRCR := 16#05FA_0300#;
-      pragma Assert (AIRCR = 16#FA05_0300#); --  Key value is swapped
+         --  Write the required key (16#05FA#) and desired PRIGROUP value. We
+         --  configure this to 3, to have 16 group priorities
+
+         AIRCR := 16#05FA_0300#;
+         pragma Assert (AIRCR = 16#FA05_0300#); --  Key value is swapped
+      end if;
 
       --  Enable usage, bus and memory management fault
 
       SHCSR := SHCSR or 16#7_0000#;
 
+      --  Call context switch hardware initialization
+      Initialize_Context_Switch;
+
       --  Unmask Fault
 
       Asm ("cpsie f", Volatile => True);
+
    end Initialize_CPU;
 
    --------------------
@@ -257,18 +270,10 @@ package body System.BB.CPU_Primitives is
 
       pragma Assert (PRIMASK = 1);
 
-      --  Make deferred supervisor call pending
-
-      ICSR := ICSR_Pend_SV_Set;
-
-      --  The context switch better be pending, as otherwise it means
-      --  interrupts were not disabled.
-
-      pragma Assert ((ICSR and ICSR_Pend_SV_Set) /= 0);
+      Trigger_Context_Switch;
 
       --  Memory must be clobbered, as task switching causes a task to signal,
       --  which means its memory changes must be visible to all other tasks.
-
       Asm ("", Volatile => True, Clobber => "memory");
    end Context_Switch;
 
@@ -320,82 +325,30 @@ package body System.BB.CPU_Primitives is
       --  The interrupt handler may have scheduled a new task, so we need to
       --  check whether a context switch is needed.
 
-      if Context_Switch_Needed then
+      if Has_OS_Extensions then
+         if Context_Switch_Needed then
 
-         --  Perform a context switch because the currently executing thread is
-         --  no longer the one with the highest priority.
+            --  Perform a context switch because the currently executing thread
+            --  is no longer the one with the highest priority.
 
-         --  No need to update execution time. Already done in the wrapper.
+            --  No need to update execution time. Already done in the wrapper.
 
-         --  Note that the following context switch is not immediate, but
-         --  will only take effect after interrupts are enabled.
+            --  Note that the following context switch is not immediate, but
+            --  will only take effect after interrupts are enabled.
 
-         Context_Switch;
+            Context_Switch;
+         end if;
+      else
+         --  When OS extensions are not available, the context switch will be
+         --  handled in the lower level trap handler:
+         --  __gnat_irq_trap_without_os_extensions
+         null;
       end if;
 
       --  Restore interrupt masking of interrupted thread
 
       Enable_Interrupts (Running_Thread.Active_Priority);
    end Interrupt_Request_Handler;
-
-   ---------------------
-   -- Pend_SV_Handler --
-   ---------------------
-
-   procedure Pend_SV_Handler is
-   begin
-      --  At most one instance of this handler can run at a time, and
-      --  interrupts will preserve all state, so interrupts can be left
-      --  enabled. Note the invariant that at all times the active context is
-      --  in the ("__gnat_running_thread_table"). Only this handler may update
-      --  that variable.
-
-      Asm
-        (Template =>
-         "movw r2, #:lower16:__gnat_running_thread_table" & NL &
-         "movt r2, #:upper16:__gnat_running_thread_table" & NL &
-         "mrs  r12, PSP "       & NL & -- Retrieve current PSP
-         "ldr  r3, [r2]"        & NL & -- Load address of running context
-
-         --  If floating point is enabled, we may have to save the non-volatile
-         --  floating point registers, and save bit 4 of the LR register, as
-         --  this will indicate whether the floating point context was saved
-         --  or not.
-
-         (if No_Floating_Point then "" -- No FP context to save
-          else
-            "tst  lr, #16"            & NL &  -- if FPCA flag was set,
-            "itte  eq"                & NL &  -- then
-            "vstmdbeq r12!,{s16-s31}" & NL &  --   save FP context below PSP
-            "addeq  r12, #1"          & NL &  --   save flag in bit 0 of PSP
-            "subne  lr, #16"          & NL) & -- else set FPCA flag in LR
-
-         --  Swap R4-R11 and PSP (stored in R12)
-
-         "stm  r3, {r4-r12}"        & NL & -- Save context
-         "movw r3, #:lower16:first_thread_table" & NL &
-         "movt r3, #:upper16:first_thread_table" & NL &
-         "ldr  r3, [r3]"            & NL & -- Load address of new context
-         "str  r3, [r2]"            & NL & -- Update value of Pend_SV_Context
-         "ldm  r3, {r4-r12}"        & NL & -- Load context and new PSP
-
-         --  If floating point is enabled, check bit 0 of PSP to see if we
-         --  need to restore the floating point context.
-
-         (if No_Floating_Point then ""     -- No FP context to restore
-          else
-            "tst  r12, #1"            & NL &  -- if FPCA was set,
-            "itte  ne"                & NL &  -- then
-            "subne r12, #1"           & NL &  --   remove flag from PSP
-            "vldmiane r12!,{s16-s31}" & NL &  --   Restore FP context
-            "addeq lr, #16"           & NL) & -- else clear FPCA flag in LR
-
-         --  Finally, update PSP and perform the exception return
-
-         "msr  PSP, r12" & NL &        -- Update PSP
-         "bx   lr",                    -- return to caller
-         Volatile => True);
-   end Pend_SV_Handler;
 
    ---------------------
    -- SV_Call_Handler --
@@ -498,8 +451,11 @@ package body System.BB.CPU_Primitives is
       Install_Trap_Handler (EH, Hard_Fault_Vector);
       Install_Trap_Handler (EH, Bus_Fault_Vector);
       Install_Trap_Handler (EH, Usage_Fault_Vector);
-      Install_Trap_Handler (EH, Pend_SV_Vector);
-      Install_Trap_Handler (EH, SV_Call_Vector);
+
+      if Has_OS_Extensions then
+         Install_Trap_Handler (EH, Pend_SV_Vector);
+         Install_Trap_Handler (EH, SV_Call_Vector);
+      end if;
    end Install_Error_Handlers;
 
    --------------------------
@@ -531,10 +487,16 @@ package body System.BB.CPU_Primitives is
 
    procedure Enable_Interrupts (Level : Integer) is
    begin
-      --  Set the BASEPRI according to the specified level. PRIMASK is still
-      --  set, so the change does not take effect until the next Asm.
+      if not Is_ARMv6m then
+         --  BASEPRI is not available in the armv6-m architecture, it was
+         --  introduced in armv7-m. There's only one level of trap.
 
-      Board_Support.Interrupts.Set_Current_Priority (Level);
+         --  Set the BASEPRI according to the specified level. PRIMASK is still
+         --  set, so the change does not take effect until the next Asm.
+
+         Board_Support.Interrupts.Set_Current_Priority (Level);
+
+      end if;
 
       --  The following enables interrupts and will cause any pending
       --  interrupts to take effect. The barriers and their placing are

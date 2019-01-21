@@ -1,10 +1,10 @@
 # BSP support for Sparc/Leon
 from support import readfile
-from support.bsp import BSP
-from support.target import DFBBTarget
+from support.bsp_sources.archsupport import ArchSupport
+from support.bsp_sources.target import DFBBTarget
 
 
-class LeonArch(BSP):
+class LeonArch(ArchSupport):
     @property
     def name(self):
         return "leon"
@@ -33,34 +33,32 @@ class LeonArch(BSP):
 
 class LeonTarget(DFBBTarget):
     @property
-    def zfp_system_ads(self):
-        return 'system-xi-sparc.ads'
+    def parent(self):
+        return LeonArch
 
     @property
-    def sfp_system_ads(self):
-        return 'system-xi-sparc-ravenscar.ads'
-
-    @property
-    def full_system_ads(self):
-        return 'system-xi-sparc-full.ads'
-
-    def __init__(self):
-        super(LeonTarget, self).__init__(
-            mem_routines=True,
-            small_mem=False)
+    def system_ads(self):
+        return {
+            'zfp': 'system-xi-sparc.ads',
+            'ravenscar-sfp': 'system-xi-sparc-ravenscar.ads',
+            'ravenscar-full': 'system-xi-sparc-full.ads'
+        }
 
     def amend_rts(self, rts_profile, conf):
         super(LeonTarget, self).amend_rts(rts_profile, conf)
-        conf.rts_xml = \
-            conf.rts_xml.replace(
-                ' "-nolibc",', '')
         if rts_profile == 'ravenscar-full':
             # Use leon-zcx.specs to link with -lc.
             conf.config_files.update(
                 {'link-zcx.spec': readfile('sparc/leon/leon-zcx.specs')})
-            conf.rts_xml = conf.rts_xml.replace(
+
+    def dump_runtime_xml(self, rts_name, rts):
+        cnt = super(LeonTarget, self).dump_runtime_xml(rts_name, rts)
+        cnt = cnt.replace(' "-nolibc",', '')
+        if rts_name == 'ravenscar-full':
+            cnt = cnt.replace(
                 '"-nostartfiles",',
                 '"--specs=${RUNTIME_DIR(ada)}/link-zcx.spec",')
+        return cnt
 
 
 class Leon2(LeonTarget):
@@ -71,10 +69,6 @@ class Leon2(LeonTarget):
     @property
     def target(self):
         return 'leon-elf'
-
-    @property
-    def parent(self):
-        return LeonArch
 
     @property
     def c_switches(self):
@@ -109,16 +103,12 @@ class Leon3(LeonTarget):
         return 'leon3-elf'
 
     @property
-    def parent(self):
-        return LeonArch
-
-    @property
-    def zfp_system_ads(self):
+    def system_ads(self):
+        ret = super(Leon3, self).system_ads
         if self.smp:
             # zfp runtime makes no sense in the context of SMP variant
-            return None
-        else:
-            return 'system-xi-sparc.ads'
+            del(ret['zfp'])
+        return ret
 
     @property
     def need_fix_ut699(self):
@@ -134,9 +124,18 @@ class Leon3(LeonTarget):
 
     @property
     def compiler_switches(self):
+        ret = ()
+        if not self.smp:
+            # see R409-022: -mcpu=leon3 makes gcc generate CASA instruction
+            # when expanding compare_and_swap_4 intrinsic, which is invalid
+            # SPARCv8 insn on most leon3.
+            ret += ('-mcpu=leon',)
+        else:
+            ret += ('-mcpu=leon3',)
+
         if self.need_fix_ut699:
-            return ('-mfix-ut699',)
-        return ()
+            ret += ('-mfix-ut699',)
+        return ret
 
     @property
     def has_single_precision_fpu(self):
@@ -146,6 +145,12 @@ class Leon3(LeonTarget):
     @property
     def readme_file(self):
         return 'sparc/leon3/README'
+
+    def amend_rts(self, rts_profile, conf):
+        super(Leon3, self).amend_rts(rts_profile, conf)
+        if not self.smp:
+            # see R409-022
+            conf.rts_vars['Has_Compare_And_Swap'] = "no"
 
     def __init__(self, smp):
         self.smp = smp
@@ -175,9 +180,12 @@ class Leon4(Leon3):
         else:
             return "leon4"
 
+    @property
+    def need_fix_ut699(self):
+        return False
+
     def __init__(self, smp):
         super(Leon4, self).__init__(smp)
-        if smp:
-            self.update_pair('s-bbbopa.ads', 'src/s-bbbopa__leon4-smp.ads')
-        else:
-            self.update_pair('s-bbbopa.ads', 'src/s-bbbopa__leon4-up.ads')
+        self.update_pair(
+            's-bbbopa.ads',
+            'src/s-bbbopa__leon4-%s.ads' % ('smp' if smp else 'up', ))

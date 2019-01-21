@@ -66,6 +66,7 @@ package System.BB.CPU_Specific is
    type SIMD_Registers_Type is array (0 .. 31) of SIMD_Vector_Type;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
    type Context_Buffer is record
 
       --  Only callee-saved registers need to be saved, as the context switch
@@ -94,6 +95,12 @@ package System.BB.CPU_Specific is
       --  Floating point context: all registers need to be saved, as FPU
       --  context switch is asynchronous.
 
+=======
+   type FPU_Context_Buffer is record
+      --  Floating point context: all registers need to be saved, as FPU
+      --  context switch is asynchronous.
+
+>>>>>>> community-2018
       FPSR   : Interfaces.Unsigned_32;  --  Offset: 104
       --  Status register
 
