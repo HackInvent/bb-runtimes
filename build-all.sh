@@ -400,6 +400,21 @@ build_full_stm32f769()
     do_ravenscar arm-eabi ravenscar-full/stm32f769disco
 }
 
+build_zfp_stm32h7xx()
+{
+    do_zfp arm-eabi zfp/stm32h7xx
+}
+
+build_sfp_stm32h7xx()
+{
+    do_ravenscar arm-eabi ravenscar-sfp/stm32h7xx
+}
+
+build_full_stm32h7xx()
+{
+    do_ravenscar arm-eabi ravenscar-full/stm32h7xx
+}
+
 build_zfp_lm3s()
 {
     do_zfp arm-eabi zfp/lm3s
@@ -789,6 +804,14 @@ else
                   zfp)  build_zfp_stm32f7 ;;
                   sfp)  build_sfp_stm32f7 ;;
                   full) build_full_stm32f7 ;;
+                  *) echo "Unknown command $opt for target $target"; exit 2;;
+              esac
+              ;;
+          stm32h7xx)
+              case $opt in
+                  zfp)  build_zfp_stm32h7xx ;;
+                  sfp)  build_sfp_stm32h7xx ;;
+                  full) build_full_stm32h7xx ;;
                   *) echo "Unknown command $opt for target $target"; exit 2;;
               esac
               ;;

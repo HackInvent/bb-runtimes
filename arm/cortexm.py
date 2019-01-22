@@ -416,13 +416,11 @@ class Stm32CommonArchSupport(ArchSupport):
         self.add_linker_script('arm/stm32/common-ROM.ld', loader='ROM')
 
         self.add_sources('crt0', [
-            'src/s-bbpara__stm32f4.ads',
-            'arm/stm32/s-stm32.ads',
-            'arm/stm32/start-rom.S',
+            #'src/s-bbpara__stm32f4.ads',
+            # 'arm/stm32/s-stm32.ads',
+            # 'arm/stm32/start-rom.S',
             'arm/stm32/start-ram.S',
-            'arm/stm32/start-common.S',
-            'arm/stm32/setup_pll.adb',
-            'arm/stm32/setup_pll.ads'])
+            'arm/stm32/start-common.S'])
 
 
 class Stm32(ArmV7MTarget):
@@ -441,7 +439,7 @@ class Stm32(ArmV7MTarget):
 
     @property
     def has_double_precision_fpu(self):
-        if self.mcu == 'stm32f7x9':
+        if self.mcu == 'stm32f7x9' or self.mcu == 'stm32h7xx':
             return True
         else:
             return False
@@ -450,7 +448,7 @@ class Stm32(ArmV7MTarget):
     def cortex(self):
         if self.mcu.startswith('stm32f4'):
             return 'cortex-m4'
-        elif self.mcu.startswith('stm32f7'):
+        elif self.mcu.startswith('stm32f7') or self.mcu.startswith('stm32h7'):
             return 'cortex-m7'
         else:
             assert False, "Unexpected MCU %s" % self.mcu
@@ -488,10 +486,28 @@ class Stm32(ArmV7MTarget):
             self.mcu = 'stm32f7x'
         elif self.board == 'stm32f769disco':
             self.mcu = 'stm32f7x9'
+        elif self.board == 'stm32h743nucleo':
+            self.mcu = 'stm32h7xx'
         else:
             assert False, "Unknown stm32 board: %s" % self.board
 
         super(Stm32, self).__init__()
+
+        #self.add_linker_script('arm/stm32/common-RAM.ld', loader='RAM')
+        #self.add_linker_script('arm/stm32/common-ROM.ld', loader='ROM')
+
+        if self.mcu.startswith('stm32h7'):
+            self.add_sources('crt0', [
+                'arm/stm32/stm32h7xx/setup_pll.adb',
+                'arm/stm32/stm32h7xx/setup_pll.ads',
+                'arm/stm32/stm32h7xx/start-rom.S'])
+        else:
+            self.add_sources('crt0', [
+                'src/s-bbpara__stm32f4.ads',
+                'arm/stm32/setup_pll.adb',
+                'arm/stm32/setup_pll.ads',
+                'arm/stm32/s-stm32.ads',
+                'arm/stm32/start-rom.S'])
 
         self.add_linker_script('arm/stm32/%s/memory-map.ld' % self.mcu,
                                loader=('RAM', 'ROM'))
@@ -534,6 +550,15 @@ class Stm32(ArmV7MTarget):
         elif self.board == 'stm32f769disco':
             self.add_sources('crt0', [
                 'arm/stm32/stm32f7x/s-stm32.adb'])
+        elif self.board == 'stm32h743nucleo':# has specific start script + no setup_pll
+            self.add_sources('crt0', [
+                'arm/stm32/stm32h7xx/s-bbpara.ads',
+                'arm/stm32/stm32h7xx/s-stm32.ads',
+                'arm/stm32/stm32h7xx/s-stm32.adb'
+                # 'arm/stm32/stm32h7xx/start-common.S',
+                # 'arm/stm32/stm32h7xx/start-ram.S',
+                # 'arm/stm32/stm32h7xx/start-rom.S'
+                ])
 
         # ravenscar support
         self.add_sources('gnarl', [
