@@ -47,7 +47,7 @@ package System.BB.Board_Parameters is
    --  to instabilities, so we lower the frequency to 200MHz.
    --  In non over-drive mode, the frequency should be adjusted to 180 MHz.
 
-   HSE_Clock_Frequency : constant := 25_000_000;
+   HSE_Clock_Frequency : constant := 8_000_000;
    --  Frequency of High Speed External clock.
 
    FLASH_Latency : constant := 5;
